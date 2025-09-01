@@ -14,7 +14,7 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google's Gemini AI directl
 
 ## Installation
 
-1. Download the ZIP file from GitHub (it will be named `Gemini-Kchat-main.zip`
+1. Download the ZIP file from GitHub (it will be named `Gemini-Kchat-main.zip`)
 2. Extract the ZIP file
 3. Move the extracted `Gemini-Kchat-main` folder to `~/.local/share/plasma/plasmoids/`
 4. **Important**: The folder name should remain `Gemini-Kchat-main` (don't rename it)
