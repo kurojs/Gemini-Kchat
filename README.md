@@ -6,6 +6,7 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google's Gemini AI directl
 
 - 👾 Direct integration with Google's Gemini AI
 - 💬 Quick chat interface directly from your plasma panel
+- 🔧 Multiple Gemini model selection (2.5 Flash, 2.5 Pro, 2.5 Flash-Lite, etc.)
 - ♨️ Native KDE Plasma integration with system theme
 - ⏱️ Fast and lightweight
 - 🔧 Easy configuration
@@ -26,6 +27,9 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google's Gemini AI directl
 1. Right-click on the Gemini-Kchat widget
 2. Select "Configure Gemini-Kchat..."
 3. **Important**: Enter your Google AI Studio API key in the configuration dialog
+4. Select your preferred Gemini model from the dropdown
+
+![Configuration Settings](https://i.imgur.com/sMqSJYe.png)
 
 **Note**: The widget will not work until you configure your API key. You'll see a reminder message in the chat area if the API key is missing.
 
