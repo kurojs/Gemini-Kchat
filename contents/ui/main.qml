@@ -50,7 +50,8 @@ PlasmoidItem {
         isLoading = true;
 
         const oldLength = listModel.count;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${Plasmoid.configuration.apiKey}`;
+        const selectedModel = Plasmoid.configuration.selectedModel || "gemini-2.5-flash";
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${Plasmoid.configuration.apiKey}`;
         const data = JSON.stringify({
             "contents": promptArray
         });
@@ -77,9 +78,36 @@ PlasmoidItem {
                     promptArray.push({ "role": "model", "parts": [{ "text": text }] });
                 } else {
                     console.error('Erro na requisição:', xhr.status, xhr.statusText, xhr.responseText);
+                    let errorMessage = `<b>Error ${xhr.status}:</b> `;
+                    
+                    if (xhr.status === 404) {
+                        errorMessage += "The Gemini model is not available. This might be due to an outdated model name or API version issue.";
+                    } else if (xhr.status === 401) {
+                        errorMessage += "Invalid API key. Please check your Google AI Studio API key in the widget settings.";
+                    } else if (xhr.status === 403) {
+                        errorMessage += "Access forbidden. Check your API key permissions and billing settings in Google AI Studio.";
+                    } else if (xhr.status === 429) {
+                        errorMessage += "Rate limit exceeded. Please try again in a few moments.";
+                    } else if (xhr.status >= 500) {
+                        errorMessage += "Google AI service is temporarily unavailable. Please try again later.";
+                    } else {
+                        errorMessage += xhr.statusText;
+                        try {
+                            const errorData = JSON.parse(xhr.responseText);
+                            if (errorData.error && errorData.error.message) {
+                                errorMessage += "<br><br><i>Details: " + errorData.error.message + "</i>";
+                            }
+                        } catch (e) {
+                            // If response isn't JSON, show raw response
+                            if (xhr.responseText && xhr.responseText.length < 200) {
+                                errorMessage += "<br><br><i>Details: " + xhr.responseText + "</i>";
+                            }
+                        }
+                    }
+                    
                     listModel.append({
                         "name": "Assistant",
-                        "number": "Error: " + xhr.statusText + "\n" + xhr.responseText
+                        "number": errorMessage
                     });
                 }
                 isLoading = false;
