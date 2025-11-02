@@ -10,7 +10,7 @@
         "Category": "Utilities",
         "Description": "Quickly chat with Google's Gemini AI directly from your KDE desktop using Google AI Studio API",
         "Icon": "internet-chat",
-        "Id": "Gemini-Kchat-main",
+        "Id": "com.github.kurojs.gemini-kchat",
         "License": "LGPL-2.1+",
         "Name": "Gemini-Kchat",
         "Version": "1.0",

@@ -15,12 +15,34 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google's Gemini AI directl
 
 ## Installation
 
-1. Download the ZIP file from GitHub (it will be named `Gemini-Kchat-main.zip`)
-2. Extract the ZIP file
-3. Move the extracted `Gemini-Kchat-main` folder to `~/.local/share/plasma/plasmoids/`
-4. **Important**: The folder name should remain `Gemini-Kchat-main` (don't rename it)
-5. Right-click on your plasma panel → "Add Widgets..."
-6. Search for "Gemini-Kchat" and add it to your panel
+### Method 1: Using .plasmoid file (Recommended)
+
+1. Download the latest `gemini-kchat.plasmoid` file from the [Releases](../../releases) page
+2. Install via command line:
+   ```bash
+   kpackagetool6 -i gemini-kchat.plasmoid
+   ```
+3. Right-click on your plasma panel → "Add Widgets..."
+4. Search for "Gemini-Kchat" and add it to your panel
+
+### Method 2: Manual Installation
+
+1. Download the source code ZIP from the [Releases](../../releases) page
+2. Extract and install:
+   ```bash
+   unzip gemini-kchat-v1.0.zip
+   cd Gemini-Kchat
+   kpackagetool6 -i contents --packageroot ~/.local/share/plasma/plasmoids/ -t Plasma/Applet
+   ```
+3. Right-click on your plasma panel → "Add Widgets..."
+4. Search for "Gemini-Kchat" and add it to your panel
+
+### Updating
+
+To update to a newer version:
+```bash
+kpackagetool6 -u gemini-kchat.plasmoid
+```
 
 ## Configuration
 
@@ -35,9 +57,16 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google's Gemini AI directl
 
 ## Getting Your API Key
 
-1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create a new API key
-3. Copy the key and paste it in the plasmoid configuration
+To use Gemini-Kchat, you need a Google AI Studio API key (it's free!):
+
+1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Sign in with your Google account
+3. Click "Create API Key" or "Get API Key"
+4. Select or create a Google Cloud project
+5. Copy the generated API key
+6. Paste it in the Gemini-Kchat configuration settings
+
+**Important**: Keep your API key secure and never share it publicly. The API key is stored locally in your KDE configuration.
 
 ## Usage
 
