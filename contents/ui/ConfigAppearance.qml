@@ -42,16 +42,12 @@ KCM.SimpleKCM {
             
             model: modelLabels
             
-            Component.onCompleted: {
+            currentIndex: {
                 var index = modelOptions.indexOf(cfg_selectedModel);
-                if (index >= 0) {
-                    currentIndex = index;
-                } else {
-                    currentIndex = 0; // Default to first option
-                }
+                return index >= 0 ? index : 0;
             }
             
-            onCurrentIndexChanged: {
+            onActivated: {
                 if (currentIndex >= 0 && currentIndex < modelOptions.length) {
                     cfg_selectedModel = modelOptions[currentIndex];
                 }
