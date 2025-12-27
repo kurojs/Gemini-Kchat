@@ -240,6 +240,7 @@ PlasmoidItem {
                         text: number
                         textFormat: TextEdit.RichText
                         color: name === "User" ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.textColor
+                        selectByMouse: true
 
                         PlasmaComponents.Button {
                             anchors.right: parent.right
