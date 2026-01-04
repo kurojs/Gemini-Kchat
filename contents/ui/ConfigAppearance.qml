@@ -25,14 +25,22 @@ KCM.SimpleKCM {
             Layout.fillWidth: true
             
             property var modelOptions: [
+                "gemini-3-pro-preview",
+                "gemini-3-flash-preview",
+                "deep-research-pro-preview-12-2025",
+                "gemma-3-27b-it",
                 "gemini-2.5-flash",
-                "gemini-2.5-pro", 
+                "gemini-2.5-pro",
                 "gemini-2.5-flash-lite",
                 "gemini-2.0-flash",
                 "gemini-2.0-flash-lite"
             ]
             
             property var modelLabels: [
+                i18nc("@item:inlistbox", "Gemini 3 Pro (Preview)"),
+                i18nc("@item:inlistbox", "Gemini 3 Flash (Preview)"),
+                i18nc("@item:inlistbox", "Deep Research Pro (Preview)"),
+                i18nc("@item:inlistbox", "Gemma 3 27B Instruct"),
                 i18nc("@item:inlistbox", "Gemini 2.5 Flash (Recommended)"),
                 i18nc("@item:inlistbox", "Gemini 2.5 Pro"),
                 i18nc("@item:inlistbox", "Gemini 2.5 Flash-Lite"),
@@ -59,8 +67,12 @@ KCM.SimpleKCM {
             type: Kirigami.MessageType.Information
             text: {
                 var descriptions = [
+                    i18nc("@info", "Newest generation (V3). Highest reasoning capability."),
+                    i18nc("@info", "Newest generation (V3). High speed and efficiency."),
+                    i18nc("@info", "Deep reasoning for complex research and analysis."),
+                    i18nc("@info", "Open-source model. 27B parameters instruction-tuned."),
                     i18nc("@info", "Best balance of speed and performance"),
-                    i18nc("@info", "Most advanced model with enhanced reasoning"),
+                    i18nc("@info", "Advanced model with enhanced reasoning"),
                     i18nc("@info", "Ultra-fast model optimized for cost-efficiency"),
                     i18nc("@info", "Previous generation workhorse model"),
                     i18nc("@info", "Previous generation lightweight model")
