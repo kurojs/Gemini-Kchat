@@ -13,7 +13,7 @@
         "Id": "com.github.kurojs.gemini-kchat",
         "License": "LGPL-2.1+",
         "Name": "Gemini-Kchat",
-        "Version": "1.2",
+        "Version": "1.3.0",
         "Website": "https://github.com/kurojs/Gemini-Kchat"
     },
     "X-Plasma-API-Minimum-Version": "6.0"
