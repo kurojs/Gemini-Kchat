@@ -53,6 +53,10 @@ PlasmoidItem {
             return;
         }
 
+        if (!prompt || prompt.trim() === '') {
+            return;
+        }
+
         listModel.append({
             "name": "User",
             "number": prompt
@@ -444,7 +448,7 @@ PlasmoidItem {
                     clip: true
                     
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                    ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
                     
                     background: Item {}
 
