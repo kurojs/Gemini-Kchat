@@ -125,6 +125,9 @@
     <entry name="showScrollToBottomButton" type="Bool">
       <default>false</default>
     </entry>
+    <entry name="hideScrollBar" type="Bool">
+      <default>false</default>
+    </entry>
   </group>
 
   <group name="Typography">

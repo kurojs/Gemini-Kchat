@@ -249,7 +249,7 @@ PlasmoidItem {
             clip: true
             
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+            ScrollBar.vertical.policy: Plasmoid.configuration.hideScrollBar ? ScrollBar.AlwaysOff : ScrollBar.AsNeeded
             
             ListView {
                 id: listView

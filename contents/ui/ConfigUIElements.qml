@@ -11,6 +11,7 @@ KCM.SimpleKCM {
     property alias cfg_showPasteButton: showPasteButton.checked
     property alias cfg_showSendButton: showSendButton.checked
     property alias cfg_showScrollToBottomButton: showScrollToBottomButton.checked
+    property alias cfg_hideScrollBar: hideScrollBar.checked
     property alias cfg_showInputPlaceholder: showInputPlaceholder.checked
     property alias cfg_showEmptyPlaceholder: showEmptyPlaceholder.checked
     property alias cfg_useCustomPlaceholders: useCustomPlaceholders.checked
@@ -58,6 +59,12 @@ KCM.SimpleKCM {
             id: showScrollToBottomButton
             Kirigami.FormData.label: i18nc("@option:check", "Scroll to bottom button:")
             text: i18nc("@option:check", "Visible")
+        }
+        
+        QQC2.CheckBox {
+            id: hideScrollBar
+            Kirigami.FormData.label: i18nc("@option:check", "Hide chat scrollbar:")
+            text: i18nc("@option:check", "Hidden")
         }
         
         Kirigami.Separator {
