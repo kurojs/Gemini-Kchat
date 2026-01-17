@@ -22,7 +22,9 @@ Loader {
     }
 
     function getIcon() {
-        // Use the custom Gemini-Kchat icon
+        if (Plasmoid.configuration.useCustomIcon && Plasmoid.configuration.customIconPath) {
+            return "file://" + Plasmoid.configuration.customIconPath;
+        }
         return "assets/gemini-kchat-icon.svg";
     }
 }

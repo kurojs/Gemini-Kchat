@@ -18,5 +18,172 @@
       <label>Keep widget open</label>
       <default>false</default>
     </entry>
+    <entry name="customSystemPrompt" type="String">
+      <default></default>
+    </entry>
+    <entry name="useCustomPrompt" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="useCustomIcon" type="Bool">
+      <label>Use custom icon</label>
+      <default>false</default>
+    </entry>
+    <entry name="customIconPath" type="String">
+      <label>Custom icon path</label>
+      <default></default>
+    </entry>
+  </group>
+
+  <group name="Colors">
+    <entry name="useCustomBackgroundColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="backgroundColor" type="Color">
+      <default>#1e1e1e</default>
+    </entry>
+    <entry name="backgroundOpacity" type="Double">
+      <default>1.0</default>
+    </entry>
+    <entry name="useCustomUserMessageColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="userMessageColor" type="Color">
+      <default>#2a2a2a</default>
+    </entry>
+    <entry name="userMessageOpacity" type="Double">
+      <default>1.0</default>
+    </entry>
+    <entry name="useCustomUserTextColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="userTextColor" type="Color">
+      <default>#9e9e9e</default>
+    </entry>
+    <entry name="useCustomAssistantMessageColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="assistantMessageColor" type="Color">
+      <default>#2a2a2a</default>
+    </entry>
+    <entry name="assistantMessageOpacity" type="Double">
+      <default>1.0</default>
+    </entry>
+    <entry name="useCustomAssistantTextColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="assistantTextColor" type="Color">
+      <default>#ffffff</default>
+    </entry>
+    <entry name="useCustomInputColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="inputBackgroundColor" type="Color">
+      <default>#2a2a2a</default>
+    </entry>
+    <entry name="inputOpacity" type="Double">
+      <default>1.0</default>
+    </entry>
+    <entry name="useCustomInputTextColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="inputTextColor" type="Color">
+      <default>#ffffff</default>
+    </entry>
+    <entry name="useCustomSelectionColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="selectionColor" type="Color">
+      <default>#3a7fb8</default>
+    </entry>
+    <entry name="selectionOpacity" type="Double">
+      <default>0.5</default>
+    </entry>
+    <entry name="useCustomLinkColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="linkColor" type="Color">
+      <default>#4a9eff</default>
+    </entry>
+  </group>
+
+  <group name="UIVisibility">
+    <entry name="showPinButton" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showClearButton" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showCopyButton" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showPasteButton" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showSendButton" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showScrollToBottomButton" type="Bool">
+      <default>false</default>
+    </entry>
+  </group>
+
+  <group name="Typography">
+    <entry name="useCustomFont" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="customFontFamily" type="String">
+      <default>Monospace</default>
+    </entry>
+    <entry name="customFontSize" type="Int">
+      <default>10</default>
+    </entry>
+  </group>
+
+  <group name="Placeholders">
+    <entry name="useCustomPlaceholders" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="inputPlaceholder" type="String">
+      <default>Type here what you want to ask...</default>
+    </entry>
+    <entry name="emptyPlaceholder" type="String">
+      <default>I am waiting for your questions...</default>
+    </entry>
+    <entry name="showInputPlaceholder" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showEmptyPlaceholder" type="Bool">
+      <default>true</default>
+    </entry>
+  </group>
+
+  <group name="CodeFormatting">
+    <entry name="codeBackgroundColor" type="Color">
+      <default>#1e1e1e</default>
+    </entry>
+    <entry name="codeBackgroundOpacity" type="Double">
+      <default>0.9</default>
+    </entry>
+    <entry name="codeFontFamily" type="String">
+      <default>Monospace</default>
+    </entry>
+    <entry name="codeKeywordColor" type="Color">
+      <default>#569cd6</default>
+    </entry>
+    <entry name="codeStringColor" type="Color">
+      <default>#ce9178</default>
+    </entry>
+    <entry name="codeCommentColor" type="Color">
+      <default>#6a9955</default>
+    </entry>
+    <entry name="codeFunctionColor" type="Color">
+      <default>#dcdcaa</default>
+    </entry>
+    <entry name="codeNumberColor" type="Color">
+      <default>#b5cea8</default>
+    </entry>
+    <entry name="codeTypeColor" type="Color">
+      <default>#4ec9b0</default>
+    </entry>
   </group>
 </kcfg>
