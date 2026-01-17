@@ -164,8 +164,6 @@ QtObject {
             result = result.replace('___CODEBLOCK_' + i + '___', codeBlocks[i]);
         }
         
-        result = result.replace(/__+/g, '');
-        
         var linkColor = config.linkColor || '#4a9eff';
         
         result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, text, url) {
@@ -175,6 +173,27 @@ QtObject {
         result = result.replace(/(https?:\/\/[^\s<"]+?)(?=\s|<|$)/g, function(match) {
             return '<a href="' + match + '" style="color:' + linkColor + '; text-decoration:underline;">' + match + '</a>';
         });
+        
+        var lines = result.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            
+            var headerMatch = line.match(/^(#{1,6})\s+(.+)$/);
+            if (headerMatch) {
+                var level = headerMatch[1].length;
+                var headerText = headerMatch[2];
+                var sizes = ['1.8em', '1.5em', '1.3em', '1.1em', '1.0em', '0.9em'];
+                var size = sizes[level - 1] || '1.0em';
+                lines[i] = '<div style="font-size:' + size + '; font-weight:bold; margin:12px 0 8px 0;">' + headerText + '</div>';
+                continue;
+            }
+            
+            if (line.match(/^---+$/)) {
+                lines[i] = '<hr style="border:none; border-top:1px solid rgba(255,255,255,0.2); margin:12px 0;">';
+                continue;
+            }
+        }
+        result = lines.join('\n');
         
         result = result.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
         result = result.replace(/\*([^*]+)\*/g, '<i>$1</i>');

@@ -261,26 +261,21 @@ PlasmoidItem {
                 interactive: true
                 flickableDirection: Flickable.VerticalFlick
                 
-                onContentHeightChanged: {
-                    if (isAtBottom && !listView.moving) {
-                        positionViewAtEnd();
+                onMovingChanged: {
+                    if (!moving) {
+                        updateIsAtBottom();
                     }
-                }
-                
-                onHeightChanged: {
-                    updateIsAtBottom();
                 }
                 
                 onContentYChanged: {
-                    updateIsAtBottom();
+                    if (!moving && !dragging) {
+                        updateIsAtBottom();
+                    }
                 }
                 
                 function updateIsAtBottom() {
-                    if (moving || dragging) return;
-                    var atEnd = contentHeight <= height ? true : (contentY + height >= contentHeight - 1);
-                    if (isAtBottom !== atEnd) {
-                        isAtBottom = atEnd;
-                    }
+                    var atEnd = contentHeight <= height ? true : (contentY + height >= contentHeight - 10);
+                    isAtBottom = atEnd;
                 }
 
                 Kirigami.PlaceholderMessage {
@@ -412,7 +407,6 @@ PlasmoidItem {
                     z: 999
                     
                     onClicked: {
-                        isAtBottom = true;
                         listView.positionViewAtEnd();
                     }
                     
