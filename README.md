@@ -13,15 +13,17 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google Gemini AI directly 
 **Model Support**
 - Multiple Gemini model selection through dropdown menu
 - Supported models:
-  - Gemini 3 Pro (Preview)
-  - Gemini 3 Flash (Preview)
-  - Deep Research Pro (Preview)
-  - Gemma 3 27B Instruct
-  - Gemini 2.5 Flash (Recommended)
+  - Gemini 3.1 Pro Preview
+  - Gemini 3.1 Flash-Lite Preview
+  - Gemini 3.1 Pro Custom Tools
+  - Gemini 3 Pro Preview
+  - Gemini 3 Flash Preview
+  - Gemini 2.5 Flash
   - Gemini 2.5 Pro
   - Gemini 2.5 Flash-Lite
-  - Gemini 2.0 Flash
-  - Gemini 2.0 Flash-Lite
+  - Gemma 3 (27B, 12B, 4B, 1B)
+  - Gemma 3n (E4B, E2B)
+  - Deep Research Pro Preview
 
 **Session Persistence**
 - Save and restore chat sessions across restarts
