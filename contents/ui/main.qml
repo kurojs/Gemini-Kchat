@@ -6,6 +6,8 @@ import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasmoid
 import org.kde.plasma.extras as PlasmaExtras
+import QtMultimedia
+import org.kde.plasma.plasma5support as Plasma5Support
 
 PlasmoidItem {
     id: root
@@ -14,8 +16,51 @@ PlasmoidItem {
     property var promptArray: [];
     property bool isLoading: false
     property bool isAtBottom: true
+    property var audioCache: ({})
+    property string currentPlayingHash: ""
     
     hideOnWindowDeactivate: !Plasmoid.configuration.pin
+    
+    MediaPlayer {
+        id: ttsPlayer
+        audioOutput: AudioOutput {}
+        onPlaybackStateChanged: {
+            if (playbackState === MediaPlayer.StoppedState) {
+                currentPlayingHash = "";
+            }
+        }
+        onErrorOccurred: function(error, errorString) {
+            currentPlayingHash = "";
+        }
+    }
+    
+    property var pendingTTSJobs: ({})
+    
+    Plasma5Support.DataSource {
+        id: executable
+        engine: "executable"
+        connectedSources: []
+        onNewData: function(sourceName, data) {
+            var exitCode = data["exit code"];
+            for (var hash in pendingTTSJobs) {
+                if (pendingTTSJobs[hash].command === sourceName) {
+                    var jobInfo = pendingTTSJobs[hash];
+                    if (exitCode === 0) {
+                        Qt.callLater(function() {
+                            audioCache[hash] = `file://${jobInfo.outputPath}`;
+                            ttsPlayer.source = audioCache[hash];
+                            ttsPlayer.play();
+                        });
+                    } else {
+                        currentPlayingHash = "";
+                    }
+                    delete pendingTTSJobs[hash];
+                    break;
+                }
+            }
+            disconnectSource(sourceName);
+        }
+    }
     
     SyntaxHighlighter {
         id: syntaxHighlighter
@@ -56,6 +101,98 @@ PlasmoidItem {
             linkColor: Plasmoid.configuration.useCustomLinkColor ? 
                       Plasmoid.configuration.linkColor : "#4a9eff"
         };
+    }
+
+    function stripHtml(html) {
+        var text = html.replace(/<[^>]*>/g, '');
+        text = text.replace(/&nbsp;/g, ' ');
+        text = text.replace(/&lt;/g, '<');
+        text = text.replace(/&gt;/g, '>');
+        text = text.replace(/&amp;/g, '&');
+        text = text.replace(/'/g, "\\'");
+        return text;
+    }
+
+    function hashString(str) {
+        var hash = 0;
+        for (var i = 0; i < str.length; i++) {
+            var charCode = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + charCode;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString();
+    }
+
+    function escapeJsonString(str) {
+        return str
+            .replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/\t/g, '\\t');
+    }
+
+    function getTTSCommand(cleanText, messageHash) {
+        var provider = Plasmoid.configuration.ttsProvider || "elevenlabs";
+        var escapedText = escapeJsonString(cleanText);
+        var outputPath;
+        var cmd;
+
+        if (provider === "elevenlabs") {
+            var apiKey = Plasmoid.configuration.elevenlabsApiKey;
+            var voiceId = Plasmoid.configuration.elevenlabsVoiceId || "pNInz6obpgDQGcFmaJgB";
+            if (!apiKey) return null;
+            outputPath = `/tmp/tts_${messageHash}.mp3`;
+            cmd = `rm -f ${outputPath}; curl -s -X POST 'https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?optimize_streaming_latency=3' -H 'xi-api-key: ${apiKey}' -H 'Content-Type: application/json' -d '{"text":"${escapedText}","model_id":"eleven_multilingual_v2"}' -o ${outputPath}`;
+        } else if (provider === "openai") {
+            var apiKey = Plasmoid.configuration.openaiApiKey;
+            var voice = Plasmoid.configuration.openaiVoice || "alloy";
+            var model = Plasmoid.configuration.openaiModel || "tts-1";
+            if (!apiKey) return null;
+            outputPath = `/tmp/tts_${messageHash}.mp3`;
+            cmd = `rm -f ${outputPath}; curl -s -X POST 'https://api.openai.com/v1/audio/speech' -H 'Authorization: Bearer ${apiKey}' -H 'Content-Type: application/json' -d '{"model":"${model}","input":"${escapedText}","voice":"${voice}"}' -o ${outputPath}`;
+        } else if (provider === "espeak") {
+            var voice = Plasmoid.configuration.espeakVoice || "en";
+            var speed = Plasmoid.configuration.espeakSpeed || 175;
+            var pitch = Plasmoid.configuration.espeakPitch || 50;
+            outputPath = `/tmp/tts_${messageHash}.wav`;
+            var shellText = cleanText.replace(/'/g, "'\\''");
+            cmd = `rm -f ${outputPath}; espeak-ng -v ${voice} -s ${speed} -p ${pitch} -w ${outputPath} '${shellText}'`;
+        } else if (provider === "piper") {
+            var modelPath = Plasmoid.configuration.piperModelPath;
+            if (!modelPath) return null;
+            outputPath = `/tmp/tts_${messageHash}.wav`;
+            var shellText = cleanText.replace(/'/g, "'\\''");
+            cmd = `rm -f ${outputPath}; echo '${shellText}' | piper --model '${modelPath}' --output_file ${outputPath}`;
+        } else {
+            return null;
+        }
+
+        return { command: cmd, outputPath: outputPath };
+    }
+
+    function playTTS(text, messageHash) {
+        if (!Plasmoid.configuration.enableTTS) return;
+        if (currentPlayingHash === messageHash) {
+            ttsPlayer.stop();
+            currentPlayingHash = "";
+            return;
+        }
+        ttsPlayer.stop();
+        currentPlayingHash = messageHash;
+        var cleanText = stripHtml(text);
+        if (audioCache[messageHash]) {
+            ttsPlayer.source = audioCache[messageHash];
+            ttsPlayer.play();
+            return;
+        }
+        var ttsCmd = getTTSCommand(cleanText, messageHash);
+        if (!ttsCmd) {
+            currentPlayingHash = "";
+            return;
+        }
+        pendingTTSJobs[messageHash] = ttsCmd;
+        executable.connectSource(ttsCmd.command);
     }
 
     function request(messageField, listModel, prompt) {
@@ -594,6 +731,8 @@ PlasmoidItem {
 
                         PlasmaComponents.Button {
                             anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.rightMargin: name === "Assistant" && Plasmoid.configuration.enableTTS && Plasmoid.configuration.showCopyButton ? 40 : 0
                             visible: Plasmoid.configuration.showCopyButton && hoverHandler.hovered
 
                             icon.name: "edit-copy-symbolic"
@@ -604,6 +743,24 @@ PlasmoidItem {
                                 textMessage.selectAll();
                                 textMessage.copy();
                                 textMessage.deselect();
+                            }
+
+                            PlasmaComponents.ToolTip.text: text
+                            PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+                            PlasmaComponents.ToolTip.visible: hovered
+                        }
+
+                        PlasmaComponents.Button {
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            visible: name === "Assistant" && Plasmoid.configuration.enableTTS && hoverHandler.hovered
+
+                            icon.name: currentPlayingHash === hashString(number) ? "media-playback-stop" : "audio-volume-high"
+                            text: currentPlayingHash === hashString(number) ? i18n("Stop") : i18n("Play")
+                            display: PlasmaComponents.AbstractButton.IconOnly
+                            
+                            onClicked: {
+                                playTTS(number, hashString(number));
                             }
 
                             PlasmaComponents.ToolTip.text: text

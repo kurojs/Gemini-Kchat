@@ -42,4 +42,9 @@ ConfigModel {
          icon: "document-save"
          source: "ConfigPersistence.qml"
     }
+    ConfigCategory {
+         name: i18nc("@title", "TTS")
+         icon: "audio-volume-high"
+         source: "ConfigTTS.qml"
+    }
 }

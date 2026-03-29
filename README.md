@@ -23,6 +23,19 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google Gemini AI directly 
   - Gemini 2.0 Flash
   - Gemini 2.0 Flash-Lite
 
+**Session Persistence**
+- Save and restore chat sessions across restarts
+- Multiple session management with easy switching
+- Rename and delete sessions
+
+**Text-to-Speech**
+- Multiple TTS provider support:
+  - ElevenLabs (cloud, high quality)
+  - OpenAI TTS (cloud)
+  - espeak-ng (local, fast)
+  - Piper (local, neural voices)
+- Audio caching to avoid re-generating
+
 **Customization**
 - Markdown rendering with syntax highlighting for code blocks
 - Customizable system prompts
@@ -152,6 +165,7 @@ Click on the Gemini-Kchat icon in your panel and start chatting with Gemini. Sim
 
 - KDE Plasma 6.0 or later
 - Google AI Studio API key
+- For local TTS: espeak-ng or piper (optional)
 
 ---
 

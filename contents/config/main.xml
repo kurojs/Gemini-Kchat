@@ -198,4 +198,40 @@
       <default></default>
     </entry>
   </group>
+
+  <group name="TTS">
+    <entry name="enableTTS" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="ttsProvider" type="String">
+      <default>elevenlabs</default>
+    </entry>
+    <entry name="elevenlabsApiKey" type="String">
+      <default></default>
+    </entry>
+    <entry name="elevenlabsVoiceId" type="String">
+      <default>pNInz6obpgDQGcFmaJgB</default>
+    </entry>
+    <entry name="openaiApiKey" type="String">
+      <default></default>
+    </entry>
+    <entry name="openaiVoice" type="String">
+      <default>alloy</default>
+    </entry>
+    <entry name="openaiModel" type="String">
+      <default>tts-1</default>
+    </entry>
+    <entry name="espeakVoice" type="String">
+      <default>en</default>
+    </entry>
+    <entry name="espeakSpeed" type="Int">
+      <default>175</default>
+    </entry>
+    <entry name="espeakPitch" type="Int">
+      <default>50</default>
+    </entry>
+    <entry name="piperModelPath" type="String">
+      <default></default>
+    </entry>
+  </group>
 </kcfg>
