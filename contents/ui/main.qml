@@ -21,10 +21,24 @@ PlasmoidItem {
         id: syntaxHighlighter
     }
     
+    SessionManager {
+        id: sessionManager
+        Component.onCompleted: {
+            if (Plasmoid.configuration.enablePersistence) {
+                init()
+            }
+        }
+    }
+    
     Connections {
         target: Plasmoid.configuration
         function onPinChanged() {
             root.hideOnWindowDeactivate = !Plasmoid.configuration.pin
+        }
+        function onEnablePersistenceChanged() {
+            if (Plasmoid.configuration.enablePersistence) {
+                sessionManager.init()
+            }
         }
     }
     
@@ -109,6 +123,10 @@ PlasmoidItem {
                         }
                     }
                     promptArray.push({ "role": "model", "parts": [{ "text": response.candidates[0].content.parts[0].text }] });
+                    
+                    if (Plasmoid.configuration.enablePersistence) {
+                        sessionManager.saveSession(selectedModel, promptArray)
+                    }
                 } else {
                     let errorMessage = `<b>Error ${xhr.status}:</b> `;
                     
@@ -192,7 +210,7 @@ PlasmoidItem {
 
         PlasmaExtras.PlasmoidHeading {
             Layout.fillWidth: true
-            visible: Plasmoid.configuration.showPinButton || Plasmoid.configuration.showClearButton
+            visible: Plasmoid.configuration.showPinButton || Plasmoid.configuration.showClearButton || Plasmoid.configuration.enablePersistence
 
             contentItem: RowLayout {
                 Layout.fillWidth: true
@@ -215,13 +233,142 @@ PlasmoidItem {
                     PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
                     PlasmaComponents.ToolTip.visible: hovered
                 }
+                
+                PlasmaComponents.ComboBox {
+                    id: sessionSelector
+                    visible: Plasmoid.configuration.enablePersistence
+                    Layout.fillWidth: true
+                    textRole: "title"
+                    valueRole: "id"
+                    
+                    model: {
+                        var filtered = []
+                        for (var i = 0; i < sessionManager.sessions.length; i++) {
+                            var sess = sessionManager.sessions[i]
+                            if (sess.id !== sessionManager.currentSessionId || (promptArray && promptArray.length > 0)) {
+                                filtered.push(sess)
+                            }
+                        }
+                        return filtered
+                    }
+                    
+                    displayText: {
+                        if (!sessionManager.currentSessionId || promptArray.length === 0) {
+                            return ""
+                        }
+                        for (var i = 0; i < sessionManager.sessions.length; i++) {
+                            if (sessionManager.sessions[i].id === sessionManager.currentSessionId) {
+                                return sessionManager.sessions[i].title
+                            }
+                        }
+                        return ""
+                    }
+                    
+                    onActivated: function(index) {
+                        var filtered = []
+                        for (var i = 0; i < sessionManager.sessions.length; i++) {
+                            var sess = sessionManager.sessions[i]
+                            if (sess.id !== sessionManager.currentSessionId || (promptArray && promptArray.length > 0)) {
+                                filtered.push(sess)
+                            }
+                        }
+                        
+                        if (index >= 0 && index < filtered.length) {
+                            var session = sessionManager.loadSession(filtered[index].id)
+                            if (session) {
+                                listModelController.clear()
+                                promptArray = session.messages
+                                
+                                for (var i = 0; i < session.messages.length; i++) {
+                                    var msg = session.messages[i]
+                                    var displayText = msg.parts[0].text
+                                    
+                                    if (msg.role === "model") {
+                                        displayText = syntaxHighlighter.formatText(displayText, getConfigColors())
+                                    }
+                                    
+                                    listModelController.append({
+                                        "name": msg.role === "user" ? "User" : "Assistant",
+                                        "number": displayText
+                                    })
+                                }
+                            }
+                        }
+                    }
+                    
+                    Connections {
+                        target: sessionManager
+                        function onSessionsUpdated() {
+                            sessionSelector.model = Qt.binding(function() {
+                                var filtered = []
+                                for (var i = 0; i < sessionManager.sessions.length; i++) {
+                                    var sess = sessionManager.sessions[i]
+                                    if (sess.id !== sessionManager.currentSessionId || (promptArray && promptArray.length > 0)) {
+                                        filtered.push(sess)
+                                    }
+                                }
+                                return filtered
+                            })
+                        }
+                    }
+                }
+                
+                PlasmaComponents.Button {
+                    visible: Plasmoid.configuration.enablePersistence
+                    icon.name: "document-edit"
+                    display: PlasmaComponents.AbstractButton.IconOnly
+                    text: i18n("Edit session title")
+                    enabled: sessionManager.currentSessionId !== ""
+                    
+                    onClicked: {
+                        editDialog.open()
+                    }
+                    
+                    PlasmaComponents.ToolTip.text: text
+                    PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    PlasmaComponents.ToolTip.visible: hovered
+                }
+                
+                PlasmaComponents.Button {
+                    visible: Plasmoid.configuration.enablePersistence
+                    icon.name: "delete"
+                    display: PlasmaComponents.AbstractButton.IconOnly
+                    text: i18n("Delete session")
+                    enabled: sessionManager.currentSessionId !== ""
+                    
+                    onClicked: {
+                        deleteDialog.open()
+                    }
+                    
+                    PlasmaComponents.ToolTip.text: text
+                    PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    PlasmaComponents.ToolTip.visible: hovered
+                }
+                
+                PlasmaComponents.Button {
+                    visible: Plasmoid.configuration.enablePersistence
+                    icon.name: "list-add"
+                    display: PlasmaComponents.AbstractButton.IconOnly
+                    text: i18n("New session")
+                    
+                    onClicked: {
+                        listModelController.clear()
+                        promptArray = []
+                        sessionManager.createSession()
+                    }
+                    
+                    PlasmaComponents.ToolTip.text: text
+                    PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    PlasmaComponents.ToolTip.visible: hovered
+                }
 
                 Item {
-                    Layout.fillWidth: true
+                    Layout.fillWidth: !sessionSelector.visible
+                    visible: !sessionSelector.visible
                 }
 
                 PlasmaComponents.Button {
-                    visible: Plasmoid.configuration.showClearButton
+                    visible: Plasmoid.configuration.showClearButton && !Plasmoid.configuration.enablePersistence
                     icon.name: "edit-clear-symbolic"
                     text: i18n("Clear chat")
                     display: PlasmaComponents.AbstractButton.IconOnly
@@ -236,6 +383,82 @@ PlasmoidItem {
                     PlasmaComponents.ToolTip.text: text
                     PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
                     PlasmaComponents.ToolTip.visible: hovered
+                }
+            }
+        }
+        
+        PlasmaComponents.Dialog {
+            id: editDialog
+            title: i18n("Edit Title")
+            x: (parent.width - width) / 2
+            y: (parent.height - height) / 2
+            width: 300
+            
+            standardButtons: PlasmaComponents.Dialog.Ok | PlasmaComponents.Dialog.Cancel
+            
+            onAccepted: {
+                var newTitle = titleField.text.trim()
+                sessionManager.updateSessionTitle(sessionManager.currentSessionId, newTitle)
+                titleField.text = ""
+            }
+            
+            onRejected: {
+                titleField.text = ""
+            }
+            
+            ColumnLayout {
+                width: parent.width
+                spacing: Kirigami.Units.largeSpacing
+                
+                PlasmaComponents.TextField {
+                    id: titleField
+                    Layout.fillWidth: true
+                    placeholderText: i18n("Enter title")
+                    
+                    Component.onCompleted: {
+                        if (editDialog.visible) {
+                            titleField.text = sessionManager.getCurrentSessionTitle()
+                            titleField.selectAll()
+                        }
+                    }
+                    
+                    Connections {
+                        target: editDialog
+                        function onVisibleChanged() {
+                            if (editDialog.visible) {
+                                titleField.text = sessionManager.getCurrentSessionTitle()
+                                titleField.forceActiveFocus()
+                                titleField.selectAll()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        PlasmaComponents.Dialog {
+            id: deleteDialog
+            title: i18n("Delete Session")
+            x: (parent.width - width) / 2
+            y: (parent.height - height) / 2
+            width: 300
+            
+            standardButtons: PlasmaComponents.Dialog.Yes | PlasmaComponents.Dialog.No
+            
+            onAccepted: {
+                sessionManager.deleteSession(sessionManager.currentSessionId)
+                listModelController.clear()
+                promptArray = []
+            }
+            
+            ColumnLayout {
+                width: parent.width
+                spacing: Kirigami.Units.largeSpacing
+                
+                PlasmaComponents.Label {
+                    Layout.fillWidth: true
+                    text: i18n("Delete this session?")
+                    wrapMode: Text.WordWrap
                 }
             }
         }

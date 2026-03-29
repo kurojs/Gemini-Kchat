@@ -37,4 +37,9 @@ ConfigModel {
          icon: "text-x-script"
          source: "ConfigCodeFormatting.qml"
     }
+    ConfigCategory {
+         name: i18nc("@title", "Persistence")
+         icon: "document-save"
+         source: "ConfigPersistence.qml"
+    }
 }
