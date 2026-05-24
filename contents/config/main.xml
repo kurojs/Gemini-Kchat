@@ -46,19 +46,19 @@
     </entry>
     <entry name="msgListDirectory" type="String">
       <label>List directory message</label>
-      <default>\u2699\uFE0F list_directory...</default>
+      <default>⚙️ list_directory...</default>
     </entry>
     <entry name="msgReadTextFile" type="String">
       <label>Read file message</label>
-      <default>\u2699\uFE0F read_text_file...</default>
+      <default>⚙️ read_text_file...</default>
     </entry>
     <entry name="msgWriteTextFile" type="String">
       <label>Write file message</label>
-      <default>\u2699\uFE0F write_text_file...</default>
+      <default>⚙️ write_text_file...</default>
     </entry>
     <entry name="msgRunCommand" type="String">
       <label>Run command message</label>
-      <default>\u2699\uFE0F run_command...</default>
+      <default>⚙️ run_command...</default>
     </entry>
   </group>
 
