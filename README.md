@@ -57,11 +57,26 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google Gemini AI directly 
 
 ### Screenshots
 
-<table>
-  <tr>
-    <td><img src="https://i.imgur.com/suUtute.png" alt="Chat Interface Light"></td>
-  </tr>
-</table>
+<div align="center">
+  <table>
+    <tr>
+      <td><img src="https://i.imgur.com/suUtute.png" width="400" alt="Chat Interface Light"/></td>
+      <td><img src="https://i.imgur.com/MkE5ly8.png" width="400" alt="File Operations"/></td>
+    </tr>
+    <tr>
+      <td align="center"><em>Chat interface with markdown rendering and syntax highlighting</em></td>
+      <td align="center"><em>Gemini listing directories and reading files with status messages</em></td>
+    </tr>
+    <tr>
+      <td><img src="https://i.imgur.com/FocxtmB.png" width="400" alt="Run Command"/></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td align="center"><em>Running shell commands and writing files directly from chat</em></td>
+      <td></td>
+    </tr>
+  </table>
+</div>
 
 ---
 
@@ -122,6 +137,10 @@ kpackagetool6 -u gemini-kchat.plasmoid
     </td>
   </tr>
   <tr>
+    <td align="center"><em>API key, model selection, file operations and function messages config</em></td>
+    <td align="center"><em>Custom system prompt to set Gemini's behavior and personality</em></td>
+  </tr>
+  <tr>
     <td>
       <b>Appearance & Colors</b><br>
       <img src="https://i.imgur.com/Y0ZtGWd.png" alt="General Appearance">
@@ -130,6 +149,10 @@ kpackagetool6 -u gemini-kchat.plasmoid
       <b>Code Block Formatting</b><br>
       <img src="https://i.imgur.com/bKgqKnP.png" alt="Code Syntax Highlighting">
     </td>
+  </tr>
+  <tr>
+    <td align="center"><em>Background, message and text color customization for the chat</em></td>
+    <td align="center"><em>Syntax highlighting colors for code blocks in responses</em></td>
   </tr>
   <tr>
     <td>
@@ -142,10 +165,17 @@ kpackagetool6 -u gemini-kchat.plasmoid
     </td>
   </tr>
   <tr>
+    <td align="center"><em>Font family and size settings for the chat interface</em></td>
+    <td align="center"><em>Toggle visibility of buttons, scrollbars, and placeholders</em></td>
+  </tr>
+  <tr>
     <td colspan="2" align="center">
       <b>Custom Plasmoid Icon</b><br>
       <img src="https://i.imgur.com/jVBgLn7.png" alt="Custom Icon Settings">
     </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><em>Replace the default widget icon with a custom image file</em></td>
   </tr>
 </table>
 
