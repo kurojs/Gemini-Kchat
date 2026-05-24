@@ -169,13 +169,18 @@ kpackagetool6 -u gemini-kchat.plasmoid
     <td align="center"><em>Toggle visibility of buttons, scrollbars, and placeholders</em></td>
   </tr>
   <tr>
-    <td colspan="2" align="center">
+    <td>
       <b>Custom Plasmoid Icon</b><br>
       <img src="https://i.imgur.com/jVBgLn7.png" alt="Custom Icon Settings">
     </td>
+    <td>
+      <b>Text-to-Speech</b><br>
+      <img src="https://i.imgur.com/CGf7Ic9.png" alt="TTS Configuration">
+    </td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><em>Replace the default widget icon with a custom image file</em></td>
+    <td align="center"><em>Replace the default widget icon with a custom image file</em></td>
+    <td align="center"><em>Multiple TTS providers: ElevenLabs, OpenAI, espeak, Piper, and Speech Note</em></td>
   </tr>
 </table>
 
