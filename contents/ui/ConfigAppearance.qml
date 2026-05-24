@@ -28,38 +28,34 @@ KCM.SimpleKCM {
                 "gemini-2.5-flash",
                 "gemini-2.5-pro",
                 "gemini-2.5-flash-lite",
-                "gemini-2.5-flash-lite-preview-09-2025",
+                "gemini-3.5-flash",
                 "gemini-3.1-pro-preview",
-                "gemini-3.1-flash-lite-preview",
+                "gemini-3.1-flash-lite",
                 "gemini-3.1-pro-preview-customtools",
                 "gemini-3-pro-preview",
                 "gemini-3-flash-preview",
-                "gemma-3-27b-it",
-                "gemma-3-12b-it",
-                "gemma-3-4b-it",
-                "gemma-3-1b-it",
-                "gemma-3n-e4b-it",
-                "gemma-3n-e2b-it",
-                "deep-research-pro-preview-12-2025"
+                "gemma-4-31b-it",
+                "gemma-4-26b-a4b-it",
+                "deep-research-pro-preview-12-2025",
+                "deep-research-preview-04-2026",
+                "deep-research-max-preview-04-2026"
             ]
             
             property var modelLabels: [
                 i18nc("@item:inlistbox", "Gemini 2.5 Flash"),
                 i18nc("@item:inlistbox", "Gemini 2.5 Pro"),
                 i18nc("@item:inlistbox", "Gemini 2.5 Flash-Lite"),
-                i18nc("@item:inlistbox", "Gemini 2.5 Flash-Lite Preview (Sep 2025)"),
+                i18nc("@item:inlistbox", "Gemini 3.5 Flash"),
                 i18nc("@item:inlistbox", "Gemini 3.1 Pro Preview"),
-                i18nc("@item:inlistbox", "Gemini 3.1 Flash-Lite Preview"),
+                i18nc("@item:inlistbox", "Gemini 3.1 Flash-Lite"),
                 i18nc("@item:inlistbox", "Gemini 3.1 Pro Custom Tools"),
                 i18nc("@item:inlistbox", "Gemini 3 Pro Preview"),
                 i18nc("@item:inlistbox", "Gemini 3 Flash Preview"),
-                i18nc("@item:inlistbox", "Gemma 3 27B"),
-                i18nc("@item:inlistbox", "Gemma 3 12B"),
-                i18nc("@item:inlistbox", "Gemma 3 4B"),
-                i18nc("@item:inlistbox", "Gemma 3 1B"),
-                i18nc("@item:inlistbox", "Gemma 3n E4B"),
-                i18nc("@item:inlistbox", "Gemma 3n E2B"),
-                i18nc("@item:inlistbox", "Deep Research Pro Preview")
+                i18nc("@item:inlistbox", "Gemma 4 31B"),
+                i18nc("@item:inlistbox", "Gemma 4 26B A4B"),
+                i18nc("@item:inlistbox", "Deep Research Pro Preview"),
+                i18nc("@item:inlistbox", "Deep Research Preview (Apr 2026)"),
+                i18nc("@item:inlistbox", "Deep Research Max Preview (Apr 2026)")
             ]
             
             model: modelLabels
