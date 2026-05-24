@@ -16,6 +16,7 @@ KCM.SimpleKCM {
     property alias cfg_espeakSpeed: espeakSpeed.value
     property alias cfg_espeakPitch: espeakPitch.value
     property alias cfg_piperModelPath: piperModelPath.text
+    property alias cfg_dsnoteCommand: dsnoteCommand.text
 
     Kirigami.FormLayout {
         CheckBox {
@@ -31,7 +32,8 @@ KCM.SimpleKCM {
                 { text: "ElevenLabs", value: "elevenlabs" },
                 { text: "OpenAI", value: "openai" },
                 { text: "espeak-ng", value: "espeak" },
-                { text: "Piper", value: "piper" }
+                { text: "Piper", value: "piper" },
+                { text: "Speech Note", value: "dsnote" }
             ]
             textRole: "text"
             valueRole: "value"
@@ -163,6 +165,16 @@ KCM.SimpleKCM {
             visible: providerCombo.currentValue === "piper"
             enabled: enableTTS.checked
             placeholderText: "/path/to/model.onnx"
+        }
+
+        Item { Kirigami.FormData.isSection: true; visible: providerCombo.currentValue === "dsnote" }
+
+        TextField {
+            id: dsnoteCommand
+            Kirigami.FormData.label: i18n("Command:")
+            visible: providerCombo.currentValue === "dsnote"
+            enabled: enableTTS.checked
+            placeholderText: i18n("dsnote  or  flatpak run net.mkiol.SpeechNote")
         }
     }
 }

@@ -32,12 +32,19 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google Gemini AI directly 
 - Multiple session management with easy switching
 - Rename and delete sessions
 
+**File Operations**
+- Gemini can list directories, read files, and write files on your system
+- Run shell commands and see the output
+- Fully configurable with enable/disable toggle and allowed root directory
+- Custom status messages for each operation type
+
 **Text-to-Speech**
 - Multiple TTS provider support:
   - ElevenLabs (cloud, high quality)
   - OpenAI TTS (cloud)
   - espeak-ng (local, fast)
   - Piper (local, neural voices)
+  - Speech Note (local, multiple engines via dsnote)
 - Audio caching to avoid re-generating
 
 **Customization**

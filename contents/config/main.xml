@@ -32,6 +32,34 @@
       <label>Custom icon path</label>
       <default></default>
     </entry>
+    <entry name="enableFileOps" type="Bool">
+      <label>Enable File Operations</label>
+      <default>false</default>
+    </entry>
+    <entry name="fileOpsRootDir" type="String">
+      <label>File Operations Root Directory</label>
+      <default></default>
+    </entry>
+    <entry name="showFunctionMessages" type="Bool">
+      <label>Show function progress messages</label>
+      <default>true</default>
+    </entry>
+    <entry name="msgListDirectory" type="String">
+      <label>List directory message</label>
+      <default>\u2699\uFE0F list_directory...</default>
+    </entry>
+    <entry name="msgReadTextFile" type="String">
+      <label>Read file message</label>
+      <default>\u2699\uFE0F read_text_file...</default>
+    </entry>
+    <entry name="msgWriteTextFile" type="String">
+      <label>Write file message</label>
+      <default>\u2699\uFE0F write_text_file...</default>
+    </entry>
+    <entry name="msgRunCommand" type="String">
+      <label>Run command message</label>
+      <default>\u2699\uFE0F run_command...</default>
+    </entry>
   </group>
 
   <group name="Colors">
@@ -231,6 +259,10 @@
       <default>50</default>
     </entry>
     <entry name="piperModelPath" type="String">
+      <default></default>
+    </entry>
+    <entry name="dsnoteCommand" type="String">
+      <label>Speech Note command</label>
       <default></default>
     </entry>
   </group>

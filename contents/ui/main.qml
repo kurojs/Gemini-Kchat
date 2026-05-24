@@ -35,7 +35,8 @@ PlasmoidItem {
     }
     
     property var pendingTTSJobs: ({})
-    
+    property var pendingFuncCmd: null
+
     Plasma5Support.DataSource {
         id: executable
         engine: "executable"
@@ -45,7 +46,7 @@ PlasmoidItem {
             for (var hash in pendingTTSJobs) {
                 if (pendingTTSJobs[hash].command === sourceName) {
                     var jobInfo = pendingTTSJobs[hash];
-                    if (exitCode === 0) {
+                    if (exitCode === 0 && jobInfo.outputPath) {
                         Qt.callLater(function() {
                             audioCache[hash] = `file://${jobInfo.outputPath}`;
                             ttsPlayer.source = audioCache[hash];
@@ -57,6 +58,19 @@ PlasmoidItem {
                     delete pendingTTSJobs[hash];
                     break;
                 }
+            }
+            disconnectSource(sourceName);
+        }
+    }
+
+    Plasma5Support.DataSource {
+        id: funcExec
+        engine: "executable"
+        connectedSources: []
+        onNewData: function(sourceName, data) {
+            if (pendingFuncCmd && pendingFuncCmd.command === sourceName) {
+                pendingFuncCmd.callback(data["stdout"] || "", data["exit code"]);
+                pendingFuncCmd = null;
             }
             disconnectSource(sourceName);
         }
@@ -132,6 +146,172 @@ PlasmoidItem {
             .replace(/\t/g, '\\t');
     }
 
+    function utf8ToB64(str) {
+        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        var bytes = [];
+        for (var i = 0; i < str.length; i++) {
+            var c = str.charCodeAt(i);
+            if (c < 128) bytes.push(c);
+            else if (c < 2048) bytes.push(192 | (c >> 6), 128 | (c & 63));
+            else bytes.push(224 | (c >> 12), 128 | ((c >> 6) & 63), 128 | (c & 63));
+        }
+        var result = "";
+        for (var i = 0; i < bytes.length; i += 3) {
+            var a = bytes[i], b = bytes[i+1] || 0, c2 = bytes[i+2] || 0;
+            result += chars.charAt(a >> 2);
+            result += chars.charAt(((a & 3) << 4) | (b >> 4));
+            result += chars.charAt(((b & 15) << 2) | (c2 >> 6));
+            result += chars.charAt(c2 & 63);
+        }
+        var pad = bytes.length % 3;
+        if (pad === 1) result = result.slice(0, -2) + "==";
+        else if (pad === 2) result = result.slice(0, -1) + "=";
+        return result;
+    }
+
+    function getToolsDef() {
+        return [{
+            functionDeclarations: [{
+                name: "list_directory",
+                description: "Lists files and directories at the given absolute path. Returns one entry per line.",
+                parameters: {
+                    type: "object",
+                    properties: { path: { type: "string", description: "Absolute path to directory" } },
+                    required: ["path"]
+                }
+            }, {
+                name: "read_text_file",
+                description: "Reads the content of a text or code file. Returns up to 50000 characters.",
+                parameters: {
+                    type: "object",
+                    properties: { path: { type: "string", description: "Absolute path to file" } },
+                    required: ["path"]
+                }
+            }, {
+                name: "write_text_file",
+                description: "Writes or overwrites a text file, creating parent directories if needed.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        path: { type: "string", description: "Absolute path where to write" },
+                        content: { type: "string", description: "Text content to write" }
+                    },
+                    required: ["path", "content"]
+                }
+            }, {
+                name: "run_command",
+                description: "Runs any shell command and returns its output.",
+                parameters: {
+                    type: "object",
+                    properties: { command: { type: "string", description: "Shell command to execute" } },
+                    required: ["command"]
+                }
+            }]
+        }];
+    }
+
+    function handleFunctionCall(fc, listModel) {
+        if (Plasmoid.configuration.showFunctionMessages) {
+            var msg = fc.name;
+            switch (fc.name) {
+                case "list_directory": msg = Plasmoid.configuration.msgListDirectory; break;
+                case "read_text_file": msg = Plasmoid.configuration.msgReadTextFile; break;
+                case "write_text_file": msg = Plasmoid.configuration.msgWriteTextFile; break;
+                case "run_command": msg = Plasmoid.configuration.msgRunCommand; break;
+            }
+            listModel.append({ name: "Assistant", number: msg });
+        }
+        executeNow(fc, listModel);
+    }
+
+    function executeNow(fc, listModel) {
+        var cmd;
+        if (fc.name === "list_directory") {
+            cmd = 'ls -1a "' + fc.args.path + '" 2>&1 | head -100';
+        } else if (fc.name === "read_text_file") {
+            cmd = 'cat "' + fc.args.path + '" 2>&1 | head -c 50000';
+        } else if (fc.name === "write_text_file") {
+            var b64 = utf8ToB64(fc.args.content || "");
+            var p = fc.args.path;
+            cmd = 'echo ' + b64 + ' | base64 -d > /tmp/gemini_write.tmp 2>&1 && mkdir -p "$(dirname "' + p + '")" 2>&1 && cp /tmp/gemini_write.tmp "' + p + '" 2>&1';
+        } else if (fc.name === "run_command") {
+            cmd = fc.args.command + ' 2>&1';
+        }
+        if (cmd) {
+            isLoading = true;
+            pendingFuncCmd = { command: cmd, callback: function(out, code) {
+                try {
+                    var result = code === 0 ? { output: out } : { error: out, exit_code: code };
+                    promptArray.push({ role: "function", parts: [{ functionResponse: { name: fc.name, response: result } }] });
+                    sendApiRequest(listModel);
+                } catch(e) {
+                    promptArray.push({ role: "function", parts: [{ functionResponse: { name: fc.name, response: { error: "Callback error: " + e } } }] });
+                    sendApiRequest(listModel);
+                }
+            }};
+            funcExec.connectSource(cmd);
+        }
+    }
+
+    function getSafeContents() {
+        var c = promptArray;
+        if (Plasmoid.configuration.useCustomPrompt && Plasmoid.configuration.customSystemPrompt.trim() !== "") {
+            c = [{ role: "user", parts: [{ text: Plasmoid.configuration.customSystemPrompt }] },
+                 { role: "model", parts: [{ text: "Understood. I will follow these instructions." }] },
+                 ...promptArray];
+        }
+        return c;
+    }
+
+    function sendApiRequest(listModel) {
+        isLoading = true;
+        var selectedModel = Plasmoid.configuration.selectedModel || "gemini-2.5-flash";
+        var url = "https://generativelanguage.googleapis.com/v1beta/models/" + selectedModel + ":generateContent?key=" + Plasmoid.configuration.apiKey;
+        var body = { contents: getSafeContents() };
+        if (Plasmoid.configuration.enableFileOps) body.tools = getToolsDef();
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    var part = response.candidates[0].content.parts[0];
+                    if (part.functionCall) {
+                        promptArray.push({ role: "model", parts: [part] });
+                        handleFunctionCall(part.functionCall, listModel);
+                    } else if (part.text) {
+                        var formatted = syntaxHighlighter.formatText(part.text, getConfigColors());
+                        listModel.append({ name: "Assistant", number: formatted });
+                        promptArray.push({ role: "model", parts: [{ text: part.text }] });
+                        isLoading = false;
+                        if (Plasmoid.configuration.enablePersistence)
+                            sessionManager.saveSession(selectedModel, promptArray);
+                    }
+                } else {
+                    var msg = "<b>Error " + xhr.status + ":</b> ";
+                    if (xhr.status === 404) msg += "The Gemini model is not available.";
+                    else if (xhr.status === 401) msg += "Invalid API key. Check settings.";
+                    else if (xhr.status === 403) msg += "Access forbidden. Check API key permissions.";
+                    else if (xhr.status === 429) msg += "Rate limit exceeded. Try again later.";
+                    else if (xhr.status >= 500) msg += "Google AI service unavailable.";
+                    else {
+                        msg += xhr.statusText;
+                        try {
+                            var err = JSON.parse(xhr.responseText);
+                            if (err.error && err.error.message) msg += "<br><i>" + err.error.message + "</i>";
+                        } catch(e) {
+                            if (xhr.responseText && xhr.responseText.length < 200) msg += "<br><i>" + xhr.responseText + "</i>";
+                        }
+                    }
+                    listModel.append({ name: "Assistant", number: msg });
+                    isLoading = false;
+                }
+            }
+        };
+        xhr.send(JSON.stringify(body));
+    }
+
     function getTTSCommand(cleanText, messageHash) {
         var provider = Plasmoid.configuration.ttsProvider || "elevenlabs";
         var escapedText = escapeJsonString(cleanText);
@@ -173,6 +353,26 @@ PlasmoidItem {
 
     function playTTS(text, messageHash) {
         if (!Plasmoid.configuration.enableTTS) return;
+
+        var provider = Plasmoid.configuration.ttsProvider || "elevenlabs";
+
+        if (provider === "dsnote") {
+            var dsnoteCmd = Plasmoid.configuration.dsnoteCommand;
+            if (!dsnoteCmd || dsnoteCmd.trim() === "") return;
+            if (currentPlayingHash === messageHash) {
+                executable.connectSource(dsnoteCmd + ' --action cancel');
+                currentPlayingHash = "";
+                return;
+            }
+            currentPlayingHash = messageHash;
+            var cleanText = stripHtml(text);
+            var shellText = cleanText.replace(/'/g, "'\\''");
+            var cmd = dsnoteCmd + " --action start-reading-text --text '" + shellText + "'";
+            pendingTTSJobs[messageHash] = { command: cmd };
+            executable.connectSource(cmd);
+            return;
+        }
+
         if (currentPlayingHash === messageHash) {
             ttsPlayer.stop();
             currentPlayingHash = "";
@@ -204,103 +404,12 @@ PlasmoidItem {
             return;
         }
 
-        if (!prompt || prompt.trim() === '') {
-            return;
-        }
+        if (!prompt || prompt.trim() === '') return;
 
-        listModel.append({
-            "name": "User",
-            "number": prompt
-        });
-
+        listModel.append({ "name": "User", "number": prompt });
         promptArray.push({ "role": "user", "parts": [{ "text": prompt }] });
 
-        isLoading = true;
-
-        const oldLength = listModel.count;
-        const selectedModel = Plasmoid.configuration.selectedModel || "gemini-2.5-flash";
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${Plasmoid.configuration.apiKey}`;
-        
-        var contents = promptArray;
-        
-        if (Plasmoid.configuration.useCustomPrompt && Plasmoid.configuration.customSystemPrompt.trim() !== '') {
-            contents = [
-                { "role": "user", "parts": [{ "text": Plasmoid.configuration.customSystemPrompt }] },
-                { "role": "model", "parts": [{ "text": "Understood. I will follow these instructions." }] },
-                ...promptArray
-            ];
-        }
-        
-        const data = JSON.stringify({
-            "contents": contents
-        });
-        
-        let xhr = new XMLHttpRequest();
-
-        xhr.open('POST', url, true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 200) {
-                    const response = JSON.parse(xhr.responseText);
-                    let text = response.candidates[0].content.parts[0].text;
-                    
-                    text = syntaxHighlighter.formatText(text, getConfigColors());
-
-                    if (listModel.count === oldLength) {
-                        listModel.append({
-                            "name": "Assistant",
-                            "number": text
-                        });
-                    } else {
-                        listView.currentIndex = oldLength;
-                        const lastValue = listModel.get(oldLength);
-                        if (lastValue) {
-                            lastValue.number = text;
-                        }
-                    }
-                    promptArray.push({ "role": "model", "parts": [{ "text": response.candidates[0].content.parts[0].text }] });
-                    
-                    if (Plasmoid.configuration.enablePersistence) {
-                        sessionManager.saveSession(selectedModel, promptArray)
-                    }
-                } else {
-                    let errorMessage = `<b>Error ${xhr.status}:</b> `;
-                    
-                    if (xhr.status === 404) {
-                        errorMessage += "The Gemini model is not available. This might be due to an outdated model name or API version issue.";
-                    } else if (xhr.status === 401) {
-                        errorMessage += "Invalid API key. Please check your Google AI Studio API key in the widget settings.";
-                    } else if (xhr.status === 403) {
-                        errorMessage += "Access forbidden. Check your API key permissions and billing settings in Google AI Studio.";
-                    } else if (xhr.status === 429) {
-                        errorMessage += "Rate limit exceeded. Please try again in a few moments.";
-                    } else if (xhr.status >= 500) {
-                        errorMessage += "Google AI service is temporarily unavailable. Please try again later.";
-                    } else {
-                        errorMessage += xhr.statusText;
-                        try {
-                            const errorData = JSON.parse(xhr.responseText);
-                            if (errorData.error && errorData.error.message) {
-                                errorMessage += "<br><br><i>Details: " + errorData.error.message + "</i>";
-                            }
-                        } catch (e) {
-                            if (xhr.responseText && xhr.responseText.length < 200) {
-                                errorMessage += "<br><br><i>Details: " + xhr.responseText + "</i>";
-                            }
-                        }
-                    }
-                    
-                    listModel.append({
-                        "name": "Assistant",
-                        "number": errorMessage
-                    });
-                }
-                isLoading = false;
-            }
-        };
-
-        xhr.send(data);
+        sendApiRequest(listModel);
     }
 
     Plasmoid.contextualActions: [
@@ -416,19 +525,20 @@ PlasmoidItem {
                                 listModelController.clear()
                                 promptArray = session.messages
                                 
-                                for (var i = 0; i < session.messages.length; i++) {
-                                    var msg = session.messages[i]
-                                    var displayText = msg.parts[0].text
-                                    
-                                    if (msg.role === "model") {
-                                        displayText = syntaxHighlighter.formatText(displayText, getConfigColors())
-                                    }
-                                    
-                                    listModelController.append({
-                                        "name": msg.role === "user" ? "User" : "Assistant",
-                                        "number": displayText
-                                    })
+                            for (var i = 0; i < session.messages.length; i++) {
+                                var msg = session.messages[i]
+                                if (!msg.parts[0].text) continue
+                                var displayText = msg.parts[0].text
+                                
+                                if (msg.role === "model") {
+                                    displayText = syntaxHighlighter.formatText(displayText, getConfigColors())
                                 }
+                                
+                                listModelController.append({
+                                    "name": msg.role === "user" ? "User" : "Assistant",
+                                    "number": displayText
+                                })
+                            }
                             }
                         }
                     }
