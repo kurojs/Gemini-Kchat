@@ -26,6 +26,13 @@ KCM.ScrollViewKCM {
     property alias cfg_useCustomAssistantTextColor: useCustomAssistantTextColor.checked
     property alias cfg_assistantTextColor: assistantTextColor.color
     
+    property alias cfg_useCustomFunctionMessageColor: useCustomFunctionMessageColor.checked
+    property alias cfg_functionMessageColor: functionMessageColor.color
+    property alias cfg_functionMessageOpacity: functionMessageOpacity.value
+    
+    property alias cfg_useCustomFunctionTextColor: useCustomFunctionTextColor.checked
+    property alias cfg_functionTextColor: functionTextColor.color
+    
     property alias cfg_useCustomInputColor: useCustomInputColor.checked
     property alias cfg_inputBackgroundColor: inputBackgroundColor.color
     property alias cfg_inputOpacity: inputOpacity.value
@@ -180,6 +187,55 @@ KCM.ScrollViewKCM {
                     KQControls.ColorButton {
                         id: assistantTextColor
                         enabled: useCustomAssistantTextColor.checked
+                        showAlphaChannel: false
+                    }
+                }
+                
+                Kirigami.Separator {
+                    Kirigami.FormData.isSection: true
+                    Kirigami.FormData.label: i18nc("@title:group", "Function Messages")
+                }
+                
+                RowLayout {
+                    Kirigami.FormData.label: i18nc("@label:chooser", "Background:")
+                    
+                    QQC2.CheckBox {
+                        id: useCustomFunctionMessageColor
+                        text: i18nc("@option:check", "Custom")
+                    }
+                    
+                    KQControls.ColorButton {
+                        id: functionMessageColor
+                        enabled: useCustomFunctionMessageColor.checked
+                        showAlphaChannel: false
+                    }
+                    
+                    QQC2.Label {
+                        text: i18nc("@label", "Opacity:")
+                        enabled: useCustomFunctionMessageColor.checked
+                    }
+                    
+                    QQC2.Slider {
+                        id: functionMessageOpacity
+                        enabled: useCustomFunctionMessageColor.checked
+                        from: 0
+                        to: 1
+                        stepSize: 0.01
+                        Layout.preferredWidth: 150
+                    }
+                }
+                
+                RowLayout {
+                    Kirigami.FormData.label: i18nc("@label:chooser", "Text color:")
+                    
+                    QQC2.CheckBox {
+                        id: useCustomFunctionTextColor
+                        text: i18nc("@option:check", "Custom")
+                    }
+                    
+                    KQControls.ColorButton {
+                        id: functionTextColor
+                        enabled: useCustomFunctionTextColor.checked
                         showAlphaChannel: false
                     }
                 }

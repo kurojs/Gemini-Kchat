@@ -36,6 +36,7 @@ PlasmoidItem {
     
     property var pendingTTSJobs: ({})
     property var pendingFuncCmd: null
+    property var currentFuncSource: null
 
     Plasma5Support.DataSource {
         id: executable
@@ -219,7 +220,7 @@ PlasmoidItem {
                 case "write_text_file": msg = Plasmoid.configuration.msgWriteTextFile; break;
                 case "run_command": msg = Plasmoid.configuration.msgRunCommand; break;
             }
-            listModel.append({ name: "Assistant", number: msg });
+            listModel.append({ name: "Function", number: msg });
         }
         executeNow(fc, listModel);
     }
@@ -238,8 +239,10 @@ PlasmoidItem {
             cmd = fc.args.command + ' 2>&1';
         }
         if (cmd) {
+            currentFuncSource = cmd;
             isLoading = true;
             pendingFuncCmd = { command: cmd, callback: function(out, code) {
+                currentFuncSource = null;
                 try {
                     var result = code === 0 ? { output: out } : { error: out, exit_code: code };
                     promptArray.push({ role: "function", parts: [{ functionResponse: { name: fc.name, response: result } }] });
@@ -251,6 +254,33 @@ PlasmoidItem {
             }};
             funcExec.connectSource(cmd);
         }
+    }
+
+    function cancelCurrentCommand() {
+        pendingFuncCmd = null;
+        try {
+            if (currentFuncSource) {
+                funcExec.disconnectSource(currentFuncSource);
+                currentFuncSource = null;
+            }
+        } catch(e) {}
+        try {
+            if (promptArray.length > 0) {
+                var last = promptArray[promptArray.length - 1];
+                if (last.role === "model" && last.parts && last.parts[0] && last.parts[0].functionCall) {
+                    promptArray.pop();
+                }
+            }
+        } catch(e) {}
+        try {
+            if (listModel.count > 0) {
+                var lastItem = listModel.get(listModel.count - 1);
+                if (lastItem.name === "Function") {
+                    listModel.remove(listModel.count - 1);
+                }
+            }
+        } catch(e) {}
+        isLoading = false;
     }
 
     function getSafeContents() {
@@ -304,7 +334,7 @@ PlasmoidItem {
                             if (xhr.responseText && xhr.responseText.length < 200) msg += "<br><i>" + xhr.responseText + "</i>";
                         }
                     }
-                    listModel.append({ name: "Assistant", number: msg });
+            listModel.append({ name: "Assistant", number: msg });
                     isLoading = false;
                 }
             }
@@ -787,6 +817,11 @@ PlasmoidItem {
                                              Plasmoid.configuration.assistantMessageColor.g,
                                              Plasmoid.configuration.assistantMessageColor.b,
                                              Plasmoid.configuration.assistantMessageOpacity);
+                            } else if (name === "Function" && Plasmoid.configuration.useCustomFunctionMessageColor) {
+                                return Qt.rgba(Plasmoid.configuration.functionMessageColor.r,
+                                             Plasmoid.configuration.functionMessageColor.g,
+                                             Plasmoid.configuration.functionMessageColor.b,
+                                             Plasmoid.configuration.functionMessageOpacity);
                             }
                             return Kirigami.Theme.backgroundColor;
                         }
@@ -811,6 +846,8 @@ PlasmoidItem {
                                 return Plasmoid.configuration.userTextColor;
                             } else if (name === "Assistant" && Plasmoid.configuration.useCustomAssistantTextColor) {
                                 return Plasmoid.configuration.assistantTextColor;
+                            } else if (name === "Function" && Plasmoid.configuration.useCustomFunctionTextColor) {
+                                return Plasmoid.configuration.functionTextColor;
                             }
                             return name === "User" ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.textColor;
                         }
@@ -843,7 +880,7 @@ PlasmoidItem {
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
                             anchors.rightMargin: name === "Assistant" && Plasmoid.configuration.enableTTS && Plasmoid.configuration.showCopyButton ? 40 : 0
-                            visible: Plasmoid.configuration.showCopyButton && hoverHandler.hovered
+                            visible: name !== "Function" && Plasmoid.configuration.showCopyButton && hoverHandler.hovered
 
                             icon.name: "edit-copy-symbolic"
                             text: i18n("Copy")
@@ -871,6 +908,24 @@ PlasmoidItem {
                             
                             onClicked: {
                                 playTTS(number, hashString(number));
+                            }
+
+                            PlasmaComponents.ToolTip.text: text
+                            PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+                            PlasmaComponents.ToolTip.visible: hovered
+                        }
+
+                        PlasmaComponents.Button {
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            visible: name === "Function" && root.isLoading && hoverHandler.hovered
+
+                            icon.name: "process-stop"
+                            text: i18n("Cancel")
+                            display: PlasmaComponents.AbstractButton.IconOnly
+
+                            onClicked: {
+                                root.cancelCurrentCommand();
                             }
 
                             PlasmaComponents.ToolTip.text: text

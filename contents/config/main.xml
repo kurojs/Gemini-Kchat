@@ -102,6 +102,21 @@
     <entry name="assistantTextColor" type="Color">
       <default>#ffffff</default>
     </entry>
+    <entry name="useCustomFunctionMessageColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="functionMessageColor" type="Color">
+      <default>#2a2a2a</default>
+    </entry>
+    <entry name="functionMessageOpacity" type="Double">
+      <default>1.0</default>
+    </entry>
+    <entry name="useCustomFunctionTextColor" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="functionTextColor" type="Color">
+      <default>#ffffff</default>
+    </entry>
     <entry name="useCustomInputColor" type="Bool">
       <default>false</default>
     </entry>
