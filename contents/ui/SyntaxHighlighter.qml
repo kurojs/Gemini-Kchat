@@ -126,12 +126,91 @@ QtObject {
         return result;
     }
     
+    function wrapUnwrappedCode(text) {
+        if (text.indexOf('```') !== -1) return text;
+
+        var lines = text.split('\n');
+        var codePatterns = [
+            /^(export\s+)?(default\s+)?(async\s+)?function\s+\w+/,
+            /^(export\s+)?(default\s+)?class\s+\w+/,
+            /^(export\s+)?(const|let|var)\s+\w+\s*=\s*(\(|async\s+\(|function)/,
+            /^(export\s+)?(default\s+)?(async\s+)?function\s*\(/,
+            /^(import|from|require)\s/,
+            /^(if|else|for|while|switch|try|catch|return|throw)\s*[({]/,
+            /^\w+\s*:\s*(string|number|boolean|void|any|object|Array|Promise|unknown)\s*[=;,)]/,
+            /^\s*(const|let|var)\s+\w+\s*:\s*\w+/,
+            /^\s*\w+\.\w+\(/,
+            /^\s*<\w+[\s>]/,
+            /^\s*(public|private|protected)\s+(static\s+)?(async\s+)?\w+/,
+            /^\s*@(import|inject|Component|Injectable|NgModule)/,
+            /^\s*(func|def|class|interface|type|enum|struct|impl|pub|fn|mut)\s/,
+            /^\s*\w+\s*=\s*\{/,
+            /^\s*(print|console\.log|fmt\.Print|System\.out\.println)\s*[\(]/,
+        ];
+
+        var naturalPatterns = [
+            /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]/,
+            /[.!?]\s*$/,
+            /\b(por favor|please|acá|aquí|tenés|tenemos|podes|podemos|esto es|esto es un|es una|es un|son|está|están|como|así|también|además|sin embargo|por lo tanto|en conclusión)\b/i,
+            /\b(the|this|that|these|those|here|there|please|note|important|example|following)\b/i,
+        ];
+
+        var codeLines = 0;
+        var langLines = {};
+        var firstCodeIdx = -1;
+
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (line === '' || line === '---' || /^#{1,6}\s/.test(line)) continue;
+
+            var isCode = false;
+            for (var p = 0; p < codePatterns.length; p++) {
+                if (codePatterns[p].test(line)) { isCode = true; break; }
+            }
+
+            if (isCode) {
+                codeLines++;
+                if (firstCodeIdx === -1) firstCodeIdx = i;
+                if (/^(import|from)\s/.test(line)) langLines['typescript'] = (langLines['typescript'] || 0) + 1;
+                else if (/^(const|let|var|=>|\})\s/.test(line)) langLines['javascript'] = (langLines['javascript'] || 0) + 1;
+                else if (/^(def|class|if __name__|elif|raise)\b/.test(line)) langLines['python'] = (langLines['python'] || 0) + 1;
+                else if (/^(fn|let|pub|impl|struct|use)\s/.test(line)) langLines['rust'] = (langLines['rust'] || 0) + 1;
+                else if (/^<\/?\w+/.test(line)) langLines['html'] = (langLines['html'] || 0) + 1;
+                else if (/^[\.\#]/.test(line)) langLines['css'] = (langLines['css'] || 0) + 1;
+            }
+        }
+
+        if (codeLines < 2) return text;
+
+        var totalCode = codeLines;
+        var totalLang = 0;
+        for (var k in langLines) totalLang += langLines[k];
+        if (totalLang > 0 && totalCode / lines.length < 0.4) return text;
+
+        var bestLang = '';
+        var bestCount = 0;
+        for (var lang in langLines) {
+            if (langLines[lang] > bestCount) { bestCount = langLines[lang]; bestLang = lang; }
+        }
+
+        var codeStart = firstCodeIdx;
+        while (codeStart < lines.length && lines[codeStart].trim() === '') codeStart++;
+
+        var before = lines.slice(0, codeStart).join('\n').trim();
+        var code = lines.slice(codeStart).join('\n').trim();
+
+        if (before) {
+            return before + '\n\n```' + bestLang + '\n' + code + '\n```';
+        }
+        return '```' + bestLang + '\n' + code + '\n```';
+    }
+
     function formatText(text, config) {
-        var result = text;
+        var result = wrapUnwrappedCode(text);
         var codeBlocks = [];
         var blockIndex = 0;
         
-        var codeBlockRegex = /```(\w*)\s*\n([\s\S]*?)```/g;
+        var codeBlockRegex = /```(\w*)\s*\n?([\s\S]*?)```/g;
         var matches = [];
         var match;
         
