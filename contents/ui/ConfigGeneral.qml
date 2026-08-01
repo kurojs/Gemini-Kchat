@@ -8,8 +8,7 @@ import org.kde.kcmutils as KCM
 KCM.SimpleKCM {
     property alias cfg_useCustomIcon: useCustomIcon.checked
     property alias cfg_customIconPath: customIconPath.text
-    property alias cfg_enableFileOps: enableFileOps.checked
-    property alias cfg_fileOpsRootDir: fileOpsRootDir.text
+    property bool cfg_enableFileOps: false
     property alias cfg_showFunctionMessages: showFunctionMessages.checked
     property alias cfg_msgListDirectory: msgListDirectory.text
     property alias cfg_msgReadTextFile: msgReadTextFile.text
@@ -55,16 +54,10 @@ KCM.SimpleKCM {
 
         QQC2.CheckBox {
             id: enableFileOps
+            checked: cfg_enableFileOps
+            onToggled: cfg_enableFileOps = checked
             Kirigami.FormData.label: i18nc("@option:check", "Enable file ops:")
             text: i18nc("@option:check", "Allows Gemini to list, read, write files and run commands")
-        }
-
-        QQC2.TextField {
-            id: fileOpsRootDir
-            Kirigami.FormData.label: i18nc("@label", "Allowed root directory:")
-            enabled: enableFileOps.checked
-            placeholderText: i18nc("@info:placeholder", "e.g. ~/Downloads. Separate multiple paths with commas")
-            Layout.fillWidth: true
         }
 
         Kirigami.Separator {

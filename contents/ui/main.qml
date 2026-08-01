@@ -212,6 +212,7 @@ PlasmoidItem {
     }
 
     function handleFunctionCall(fc, listModel) {
+        if (!Plasmoid.configuration.enableFileOps) return;
         if (Plasmoid.configuration.showFunctionMessages) {
             var msg = fc.name;
             switch (fc.name) {
@@ -308,8 +309,13 @@ PlasmoidItem {
                     var response = JSON.parse(xhr.responseText);
                     var part = response.candidates[0].content.parts[0];
                     if (part.functionCall) {
-                        promptArray.push({ role: "model", parts: [part] });
-                        handleFunctionCall(part.functionCall, listModel);
+                        if (!Plasmoid.configuration.enableFileOps) {
+                            listModel.append({ name: "Assistant", number: "<i>File operations are disabled. Enable them in widget settings first.</i>" });
+                            isLoading = false;
+                        } else {
+                            promptArray.push({ role: "model", parts: [part] });
+                            handleFunctionCall(part.functionCall, listModel);
+                        }
                     } else if (part.text) {
                         var formatted = syntaxHighlighter.formatText(part.text, getConfigColors());
                         listModel.append({ name: "Assistant", number: formatted });

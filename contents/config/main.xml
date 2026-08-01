@@ -36,10 +36,6 @@
       <label>Enable File Operations</label>
       <default>false</default>
     </entry>
-    <entry name="fileOpsRootDir" type="String">
-      <label>File Operations Root Directory</label>
-      <default></default>
-    </entry>
     <entry name="showFunctionMessages" type="Bool">
       <label>Show function progress messages</label>
       <default>true</default>
