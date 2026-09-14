@@ -1,53 +1,65 @@
 import QtQuick
-import QtQuick.LocalStorage
+import Qt.labs.settings
 
-QtObject {
+Item {
     id: sessionManager
-    
+    visible: false
+
     property var sessions: []
     property string currentSessionId: ""
     property var currentMessages: []
-    
+    property var messagesStore: ({})
+
     signal sessionsUpdated()
-    
-    function getDatabase() {
-        return LocalStorage.openDatabaseSync("GeminiKchatSessions", "1.0", "Gemini Kchat Sessions", 1000000)
+
+    Settings {
+        id: storage
+        property string sessionsData: ""
+        property string lastSessionId: ""
     }
-    
+
+    function getTimestampTitle() {
+        return new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+    }
+
+    function persist() {
+        storage.sessionsData = JSON.stringify({ sessions: sessions, messages: messagesStore })
+        if (currentSessionId) {
+            storage.lastSessionId = currentSessionId
+        }
+    }
+
     function init() {
-        var db = getDatabase()
-        db.transaction(function(tx) {
-            tx.executeSql('CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, title TEXT, model TEXT, timestamp INTEGER, messages TEXT)')
-        })
+        var data = null
+        try {
+            data = JSON.parse(storage.sessionsData)
+        } catch(e) {}
+
+        sessions = (data && data.sessions) ? data.sessions : []
+        messagesStore = (data && data.messages) ? data.messages : {}
+        currentMessages = []
+
+        if (storage.lastSessionId && storage.lastSessionId !== "") {
+            currentSessionId = storage.lastSessionId
+            if (messagesStore[currentSessionId]) {
+                currentMessages = messagesStore[currentSessionId]
+            }
+        }
+
         loadSessions()
     }
-    
+
     function loadSessions() {
-        sessions = []
-        var db = getDatabase()
-        
-        db.transaction(function(tx) {
-            var result = tx.executeSql('SELECT id, title, model, timestamp FROM sessions ORDER BY timestamp DESC')
-            for (var i = 0; i < result.rows.length; i++) {
-                sessions.push({
-                    id: result.rows.item(i).id,
-                    title: result.rows.item(i).title,
-                    model: result.rows.item(i).model,
-                    timestamp: result.rows.item(i).timestamp
-                })
-            }
-        })
-        
         sessionsUpdated()
     }
-    
+
     function createSession() {
-        var timestamp = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+        var timestamp = getTimestampTitle()
         var id = Date.now().toString()
-        
+
         currentSessionId = id
         currentMessages = []
-        
+
         return {
             id: id,
             title: timestamp,
@@ -56,96 +68,115 @@ QtObject {
             messages: []
         }
     }
-    
+
     function saveSession(model, messages) {
         if (!currentSessionId) {
             var session = createSession()
             currentSessionId = session.id
         }
-        
+
         if (messages.length === 0) {
             return
         }
-        
+
         var timestamp = Date.now()
-        var title = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
-        var messagesJson = JSON.stringify(messages)
-        
-        var db = getDatabase()
-        db.transaction(function(tx) {
-            var result = tx.executeSql('SELECT id FROM sessions WHERE id = ?', [currentSessionId])
-            if (result.rows.length === 0) {
-                tx.executeSql('INSERT INTO sessions (id, title, model, timestamp, messages) VALUES (?, ?, ?, ?, ?)',
-                             [currentSessionId, title, model, timestamp, messagesJson])
-            } else {
-                tx.executeSql('UPDATE sessions SET model = ?, timestamp = ?, messages = ? WHERE id = ?',
-                             [model, timestamp, messagesJson, currentSessionId])
+        currentMessages = messages
+        messagesStore[currentSessionId] = messages
+
+        var found = false
+        for (var i = 0; i < sessions.length; i++) {
+            if (sessions[i].id === currentSessionId) {
+                sessions[i].model = model
+                sessions[i].timestamp = timestamp
+                found = true
+                break
             }
-        })
-        
+        }
+
+        if (!found) {
+            sessions.unshift({
+                id: currentSessionId,
+                title: getTimestampTitle(),
+                model: model,
+                timestamp: timestamp
+            })
+        }
+
+        sessions.sort(function(a, b) { return b.timestamp - a.timestamp })
+        persist()
         loadSessions()
     }
-    
+
     function loadSession(sessionId) {
-        var db = getDatabase()
         var session = null
-        
-        db.transaction(function(tx) {
-            var result = tx.executeSql('SELECT * FROM sessions WHERE id = ?', [sessionId])
-            if (result.rows.length > 0) {
-                var row = result.rows.item(0)
-                session = {
-                    id: row.id,
-                    title: row.title,
-                    model: row.model,
-                    timestamp: row.timestamp,
-                    messages: JSON.parse(row.messages)
-                }
-                currentSessionId = session.id
-                currentMessages = session.messages
+
+        for (var i = 0; i < sessions.length; i++) {
+            if (sessions[i].id === sessionId) {
+                session = sessions[i]
+                break
             }
-        })
-        
-        return session
+        }
+
+        if (session) {
+            currentSessionId = session.id
+            currentMessages = messagesStore[sessionId] || []
+            return {
+                id: session.id,
+                title: session.title,
+                model: session.model,
+                timestamp: session.timestamp,
+                messages: currentMessages
+            }
+        }
+
+        return null
     }
-    
+
     function deleteSession(sessionId) {
-        var db = getDatabase()
-        db.transaction(function(tx) {
-            tx.executeSql('DELETE FROM sessions WHERE id = ?', [sessionId])
-        })
-        
+        var newSessions = []
+        for (var i = 0; i < sessions.length; i++) {
+            if (sessions[i].id !== sessionId) {
+                newSessions.push(sessions[i])
+            }
+        }
+        sessions = newSessions
+        delete messagesStore[sessionId]
+
         if (currentSessionId === sessionId) {
             createSession()
         }
-        
+
+        persist()
         loadSessions()
     }
-    
+
     function updateSessionTitle(sessionId, newTitle) {
         if (!newTitle || newTitle.trim() === "") {
-            newTitle = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+            newTitle = getTimestampTitle()
         }
-        
-        var db = getDatabase()
-        db.transaction(function(tx) {
-            tx.executeSql('UPDATE sessions SET title = ? WHERE id = ?', [newTitle, sessionId])
-        })
-        
+
+        for (var i = 0; i < sessions.length; i++) {
+            if (sessions[i].id === sessionId) {
+                sessions[i].title = newTitle
+                break
+            }
+        }
+
+        persist()
         loadSessions()
     }
-    
+
     function getCurrentSessionTitle() {
         if (sessions.length === 0) {
-            return new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+            return getTimestampTitle()
         }
-        
+
         for (var i = 0; i < sessions.length; i++) {
             if (sessions[i].id === currentSessionId) {
                 return sessions[i].title
             }
         }
-        
-        return new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+
+        return getTimestampTitle()
     }
 }
