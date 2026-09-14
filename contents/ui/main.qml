@@ -246,10 +246,10 @@ PlasmoidItem {
                 currentFuncSource = null;
                 try {
                     var result = code === 0 ? { output: out } : { error: out, exit_code: code };
-                    promptArray.push({ role: "function", parts: [{ functionResponse: { name: fc.name, response: result } }] });
+                    promptArray.push({ role: "USER", parts: [{ functionResponse: { name: fc.name, response: result } }] });
                     sendApiRequest(listModel);
                 } catch(e) {
-                    promptArray.push({ role: "function", parts: [{ functionResponse: { name: fc.name, response: { error: "Callback error: " + e } } }] });
+                    promptArray.push({ role: "USER", parts: [{ functionResponse: { name: fc.name, response: { error: "Callback error: " + e } } }] });
                     sendApiRequest(listModel);
                 }
             }};
