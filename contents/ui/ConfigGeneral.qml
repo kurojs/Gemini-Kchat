@@ -10,6 +10,9 @@ KCM.SimpleKCM {
     property alias cfg_customIconPath: customIconPath.text
     property bool cfg_enableFileOps: false
     property alias cfg_showFunctionMessages: showFunctionMessages.checked
+    property alias cfg_showTerminalOutput: showTerminalOutput.checked
+    property alias cfg_terminalOutputMaxHeight: terminalOutputMaxHeight.value
+    property alias cfg_terminalUpdateInterval: terminalUpdateInterval.value
     property alias cfg_msgListDirectory: msgListDirectory.text
     property alias cfg_msgReadTextFile: msgReadTextFile.text
     property alias cfg_msgWriteTextFile: msgWriteTextFile.text
@@ -69,6 +72,33 @@ KCM.SimpleKCM {
             id: showFunctionMessages
             Kirigami.FormData.label: i18nc("@option:check", "Show progress:")
             text: i18nc("@option:check", "Show messages when Gemini runs functions")
+        }
+
+        QQC2.CheckBox {
+            id: showTerminalOutput
+            Kirigami.FormData.label: i18nc("@option:check", "Terminal output:")
+            text: i18nc("@option:check", "Show command terminal output in chat")
+            enabled: showFunctionMessages.checked
+        }
+
+        QQC2.SpinBox {
+            id: terminalOutputMaxHeight
+            Kirigami.FormData.label: i18nc("@label:spinbox", "Max output height:")
+            from: 60
+            to: 1000
+            stepSize: 20
+            editable: true
+            enabled: showFunctionMessages.checked && showTerminalOutput.checked
+        }
+
+        QQC2.SpinBox {
+            id: terminalUpdateInterval
+            Kirigami.FormData.label: i18nc("@label:spinbox", "Update frequency (ms):")
+            from: 200
+            to: 2000
+            stepSize: 50
+            editable: true
+            enabled: showFunctionMessages.checked && showTerminalOutput.checked
         }
 
         QQC2.TextField {

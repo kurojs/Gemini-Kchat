@@ -64,16 +64,86 @@ PlasmoidItem {
         }
     }
 
+    property int currentFuncMsgIndex: -1
+
+    Timer {
+        id: terminalThrottleTimer
+        interval: Plasmoid.configuration.terminalUpdateInterval > 0 ? Plasmoid.configuration.terminalUpdateInterval : 500
+        repeat: false
+        onTriggered: {
+            updateLiveTerminalUI();
+        }
+    }
+
+    function formatTerminalOutput(rawOut, maxChars) {
+        if (!rawOut) return "";
+        var limit = maxChars || 8000;
+        var slice = rawOut;
+        if (slice.length > limit * 2) {
+            slice = slice.substring(slice.length - limit * 2);
+        }
+        var cleaned = slice.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, "");
+        if (cleaned.length > limit) {
+            cleaned = "... [earlier output truncated]\n" + cleaned.substring(cleaned.length - limit);
+        } else if (rawOut.length > cleaned.length && rawOut.length > limit * 2) {
+            cleaned = "... [earlier output truncated]\n" + cleaned;
+        }
+        return cleaned;
+    }
+
+    function updateLiveTerminalUI() {
+        if (currentFuncMsgIndex < 0 || currentFuncMsgIndex >= listModel.count) return;
+        if (!pendingFuncCmd) return;
+        var item = listModel.get(currentFuncMsgIndex);
+        if (!item || item.name !== "Function") return;
+
+        var displayOut = formatTerminalOutput(pendingFuncCmd.latestOutput, 4000);
+        if (!displayOut.trim()) {
+            displayOut = "(running...)";
+        }
+        if (item.terminalOut !== displayOut) {
+            listModel.setProperty(currentFuncMsgIndex, "terminalOut", displayOut);
+        }
+    }
+
     Plasma5Support.DataSource {
         id: funcExec
         engine: "executable"
+        interval: 0
         connectedSources: []
         onNewData: function(sourceName, data) {
-            if (pendingFuncCmd && pendingFuncCmd.command === sourceName) {
-                pendingFuncCmd.callback(data["stdout"] || "", data["exit code"]);
-                pendingFuncCmd = null;
+            if (!pendingFuncCmd || pendingFuncCmd.command !== sourceName) {
+                disconnectSource(sourceName);
+                return;
             }
+
+            var stdout = data["stdout"] || "";
+            var stderr = data["stderr"] || "";
+            var combinedOut = stdout + (stderr ? "\n" + stderr : "");
+            var exitCode = data["exit code"];
+
+            pendingFuncCmd.latestOutput = combinedOut;
+
+            if (exitCode === undefined) {
+                if (Plasmoid.configuration.showFunctionMessages && Plasmoid.configuration.showTerminalOutput) {
+                    if (!terminalThrottleTimer.running) {
+                        var throttleMs = Plasmoid.configuration.terminalUpdateInterval > 0 ? Plasmoid.configuration.terminalUpdateInterval : 500;
+                        terminalThrottleTimer.interval = throttleMs;
+                        terminalThrottleTimer.start();
+                    }
+                }
+                return;
+            }
+
             disconnectSource(sourceName);
+            terminalThrottleTimer.stop();
+
+            var cb = pendingFuncCmd.callback;
+            pendingFuncCmd = null;
+            currentFuncSource = null;
+            currentFuncMsgIndex = -1;
+
+            cb(combinedOut, exitCode);
         }
     }
     
@@ -213,20 +283,34 @@ PlasmoidItem {
 
     function handleFunctionCall(fc, listModel) {
         if (!Plasmoid.configuration.enableFileOps) return;
+        var funcMsgIndex = -1;
         if (Plasmoid.configuration.showFunctionMessages) {
             var msg = fc.name;
             switch (fc.name) {
                 case "list_directory": msg = Plasmoid.configuration.msgListDirectory; break;
                 case "read_text_file": msg = Plasmoid.configuration.msgReadTextFile; break;
                 case "write_text_file": msg = Plasmoid.configuration.msgWriteTextFile; break;
-                case "run_command": msg = Plasmoid.configuration.msgRunCommand; break;
+                case "run_command":
+                    if (Plasmoid.configuration.showTerminalOutput && fc.args && fc.args.command) {
+                        msg = Plasmoid.configuration.msgRunCommand + " <code>" + syntaxHighlighter.escapeHtml(fc.args.command) + "</code>";
+                    } else {
+                        msg = Plasmoid.configuration.msgRunCommand;
+                    }
+                    break;
             }
-            listModel.append({ name: "Function", number: msg });
+            listModel.append({
+                name: "Function",
+                number: msg,
+                terminalCmd: (fc.name === "run_command" && fc.args && fc.args.command) ? fc.args.command : "",
+                terminalOut: "",
+                exitCode: 0
+            });
+            funcMsgIndex = listModel.count - 1;
         }
-        executeNow(fc, listModel);
+        executeNow(fc, listModel, funcMsgIndex);
     }
 
-    function executeNow(fc, listModel) {
+    function executeNow(fc, listModel, funcMsgIndex) {
         var cmd;
         if (fc.name === "list_directory") {
             cmd = 'ls -1a "' + fc.args.path + '" 2>&1 | head -100';
@@ -241,9 +325,34 @@ PlasmoidItem {
         }
         if (cmd) {
             currentFuncSource = cmd;
+            currentFuncMsgIndex = funcMsgIndex;
             isLoading = true;
-            pendingFuncCmd = { command: cmd, callback: function(out, code) {
+            pendingFuncCmd = { command: cmd, latestOutput: "", callback: function(out, code) {
                 currentFuncSource = null;
+                currentFuncMsgIndex = -1;
+                if (Plasmoid.configuration.showFunctionMessages && Plasmoid.configuration.showTerminalOutput && fc.name === "run_command") {
+                    if (funcMsgIndex !== undefined && funcMsgIndex >= 0 && funcMsgIndex < listModel.count) {
+                        var item = listModel.get(funcMsgIndex);
+                        if (item && item.name === "Function") {
+                            var escapedCmd = syntaxHighlighter.escapeHtml(fc.args.command || "");
+                            var displayOut = formatTerminalOutput(out);
+                            if (!displayOut.trim()) {
+                                displayOut = "(no output)";
+                            }
+                            var statusBadge = (code === 0) 
+                                ? "" 
+                                : ' <span style="color:#ff5555; font-weight:bold;">[Exit ' + code + ']</span>';
+                            var headerMsg = '<b>⚙️ $</b> <code>' + escapedCmd + '</code>' + statusBadge;
+                            listModel.set(funcMsgIndex, {
+                                name: "Function",
+                                number: headerMsg,
+                                terminalCmd: (fc.args && fc.args.command) ? fc.args.command : "",
+                                terminalOut: displayOut,
+                                exitCode: code
+                            });
+                        }
+                    }
+                }
                 try {
                     var result = code === 0 ? { output: out } : { error: out, exit_code: code };
                     promptArray.push({ role: "USER", parts: [{ functionResponse: { name: fc.name, response: result } }] });
@@ -258,7 +367,9 @@ PlasmoidItem {
     }
 
     function cancelCurrentCommand() {
+        terminalThrottleTimer.stop();
         pendingFuncCmd = null;
+        currentFuncMsgIndex = -1;
         try {
             if (currentFuncSource) {
                 funcExec.disconnectSource(currentFuncSource);
@@ -801,6 +912,7 @@ PlasmoidItem {
 
                 model: ListModel {
                     id: listModel
+                    dynamicRoles: true
 
                     Component.onCompleted: {
                         listModelController = listModel;
@@ -808,8 +920,9 @@ PlasmoidItem {
                 }
 
                 delegate: Kirigami.AbstractCard {
+                    id: messageCard
                     width: listView.width
-                    height: textMessage.implicitHeight + 16
+                    implicitHeight: textMessage.implicitHeight + (terminalLoader.active && terminalLoader.item ? terminalLoader.item.height + 6 : 0) + 16
                     
                     background: Rectangle {
                         color: {
@@ -834,113 +947,238 @@ PlasmoidItem {
                         radius: 5
                     }
 
-                    contentItem: TextEdit {
-                        id: textMessage
+                    contentItem: Column {
+                        id: cardContent
+                        spacing: 6
+                        width: parent ? parent.width : undefined
 
-                        topPadding: 8
-                        bottomPadding: 8
-                        leftPadding: 8
-                        rightPadding: 8
-                        readOnly: true
-                        wrapMode: Text.WordWrap
-                        text: number
-                        textFormat: TextEdit.RichText
-                        width: parent.width
-                        Layout.maximumWidth: parent.width
-                        color: {
-                            if (name === "User" && Plasmoid.configuration.useCustomUserTextColor) {
-                                return Plasmoid.configuration.userTextColor;
-                            } else if (name === "Assistant" && Plasmoid.configuration.useCustomAssistantTextColor) {
-                                return Plasmoid.configuration.assistantTextColor;
-                            } else if (name === "Function" && Plasmoid.configuration.useCustomFunctionTextColor) {
-                                return Plasmoid.configuration.functionTextColor;
+                        TextEdit {
+                            id: textMessage
+
+                            topPadding: 8
+                            bottomPadding: 8
+                            leftPadding: 8
+                            rightPadding: 8
+                            readOnly: true
+                            wrapMode: Text.WordWrap
+                            text: number
+                            textFormat: TextEdit.RichText
+                            width: parent.width
+                            color: {
+                                if (name === "User" && Plasmoid.configuration.useCustomUserTextColor) {
+                                    return Plasmoid.configuration.userTextColor;
+                                } else if (name === "Assistant" && Plasmoid.configuration.useCustomAssistantTextColor) {
+                                    return Plasmoid.configuration.assistantTextColor;
+                                } else if (name === "Function" && Plasmoid.configuration.useCustomFunctionTextColor) {
+                                    return Plasmoid.configuration.functionTextColor;
+                                }
+                                return name === "User" ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.textColor;
                             }
-                            return name === "User" ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.textColor;
-                        }
-                        selectByMouse: true
-                        selectionColor: Plasmoid.configuration.useCustomSelectionColor ?
-                                       Qt.rgba(Plasmoid.configuration.selectionColor.r,
-                                             Plasmoid.configuration.selectionColor.g,
-                                             Plasmoid.configuration.selectionColor.b,
-                                             Plasmoid.configuration.selectionOpacity) :
-                                       Kirigami.Theme.highlightColor
-                        
-                        font.family: Plasmoid.configuration.useCustomFont ? 
-                                    Plasmoid.configuration.customFontFamily : Kirigami.Theme.defaultFont.family
-                        font.pointSize: Plasmoid.configuration.useCustomFont ? 
-                                       Plasmoid.configuration.customFontSize : Kirigami.Theme.defaultFont.pointSize
-                        
-                        onLinkActivated: function(link) {
-                            Qt.openUrlExternally(link);
-                        }
-                        
-                        onLinkHovered: function(link) {
-                            if (link) {
-                                textMessage.cursorShape = Qt.PointingHandCursor;
-                            } else {
-                                textMessage.cursorShape = Qt.IBeamCursor;
-                            }
-                        }
-
-                        PlasmaComponents.Button {
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            anchors.rightMargin: name === "Assistant" && Plasmoid.configuration.enableTTS && Plasmoid.configuration.showCopyButton ? 40 : 0
-                            visible: name !== "Function" && Plasmoid.configuration.showCopyButton && hoverHandler.hovered
-
-                            icon.name: "edit-copy-symbolic"
-                            text: i18n("Copy")
-                            display: PlasmaComponents.AbstractButton.IconOnly
+                            selectByMouse: true
+                            selectionColor: Plasmoid.configuration.useCustomSelectionColor ?
+                                           Qt.rgba(Plasmoid.configuration.selectionColor.r,
+                                                 Plasmoid.configuration.selectionColor.g,
+                                                 Plasmoid.configuration.selectionColor.b,
+                                                 Plasmoid.configuration.selectionOpacity) :
+                                           Kirigami.Theme.highlightColor
                             
-                            onClicked: {
-                                textMessage.selectAll();
-                                textMessage.copy();
-                                textMessage.deselect();
-                            }
-
-                            PlasmaComponents.ToolTip.text: text
-                            PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
-                            PlasmaComponents.ToolTip.visible: hovered
-                        }
-
-                        PlasmaComponents.Button {
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            visible: name === "Assistant" && Plasmoid.configuration.enableTTS && hoverHandler.hovered
-
-                            icon.name: currentPlayingHash === hashString(number) ? "media-playback-stop" : "audio-volume-high"
-                            text: currentPlayingHash === hashString(number) ? i18n("Stop") : i18n("Play")
-                            display: PlasmaComponents.AbstractButton.IconOnly
+                            font.family: Plasmoid.configuration.useCustomFont ? 
+                                        Plasmoid.configuration.customFontFamily : Kirigami.Theme.defaultFont.family
+                            font.pointSize: Plasmoid.configuration.useCustomFont ? 
+                                           Plasmoid.configuration.customFontSize : Kirigami.Theme.defaultFont.pointSize
                             
-                            onClicked: {
-                                playTTS(number, hashString(number));
+                            onLinkActivated: function(link) {
+                                Qt.openUrlExternally(link);
+                            }
+                            
+                            onLinkHovered: function(link) {
+                                if (link) {
+                                    textMessage.cursorShape = Qt.PointingHandCursor;
+                                } else {
+                                    textMessage.cursorShape = Qt.IBeamCursor;
+                                }
                             }
 
-                            PlasmaComponents.ToolTip.text: text
-                            PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
-                            PlasmaComponents.ToolTip.visible: hovered
-                        }
+                            PlasmaComponents.Button {
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                anchors.rightMargin: (name === "Assistant" && Plasmoid.configuration.enableTTS && Plasmoid.configuration.showCopyButton ? 40 : 0)
+                                visible: name !== "Function" && Plasmoid.configuration.showCopyButton && hoverHandler.hovered
 
-                        PlasmaComponents.Button {
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            visible: name === "Function" && root.isLoading && hoverHandler.hovered
+                                icon.name: "edit-copy-symbolic"
+                                text: i18n("Copy")
+                                display: PlasmaComponents.AbstractButton.IconOnly
+                                
+                                onClicked: {
+                                    textMessage.selectAll();
+                                    textMessage.copy();
+                                    textMessage.deselect();
+                                }
 
-                            icon.name: "process-stop"
-                            text: i18n("Cancel")
-                            display: PlasmaComponents.AbstractButton.IconOnly
-
-                            onClicked: {
-                                root.cancelCurrentCommand();
+                                PlasmaComponents.ToolTip.text: text
+                                PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+                                PlasmaComponents.ToolTip.visible: hovered
                             }
 
-                            PlasmaComponents.ToolTip.text: text
-                            PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
-                            PlasmaComponents.ToolTip.visible: hovered
+                            PlasmaComponents.Button {
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                visible: name === "Assistant" && Plasmoid.configuration.enableTTS && hoverHandler.hovered
+
+                                icon.name: currentPlayingHash === hashString(number) ? "media-playback-stop" : "audio-volume-high"
+                                text: currentPlayingHash === hashString(number) ? i18n("Stop") : i18n("Play")
+                                display: PlasmaComponents.AbstractButton.IconOnly
+                                
+                                onClicked: {
+                                    playTTS(number, hashString(number));
+                                }
+
+                                PlasmaComponents.ToolTip.text: text
+                                PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+                                PlasmaComponents.ToolTip.visible: hovered
+                            }
+
+                            PlasmaComponents.Button {
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                visible: name === "Function" && root.isLoading && hoverHandler.hovered
+
+                                icon.name: "process-stop"
+                                text: i18n("Cancel")
+                                display: PlasmaComponents.AbstractButton.IconOnly
+
+                                onClicked: {
+                                    root.cancelCurrentCommand();
+                                }
+
+                                PlasmaComponents.ToolTip.text: text
+                                PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+                                PlasmaComponents.ToolTip.visible: hovered
+                            }
+
+                            HoverHandler {
+                                id: hoverHandler
+                            }
                         }
 
-                        HoverHandler {
-                            id: hoverHandler
+                        Loader {
+                            id: terminalLoader
+                            width: parent.width
+                            property string terminalOutput: model.terminalOut || ""
+                            active: name === "Function" && Boolean(model.terminalOut)
+                            visible: active
+                            sourceComponent: Rectangle {
+                                id: termBox
+                                width: parent ? parent.width : 200
+                                readonly property int maxH: Plasmoid.configuration.terminalOutputMaxHeight > 0 ? Plasmoid.configuration.terminalOutputMaxHeight : 200
+                                height: Math.min(maxH, Math.max(36, termFlickable.contentHeight + 12))
+                                color: {
+                                    var cfg = getConfigColors();
+                                    return syntaxHighlighter.colorToRgba(cfg.codeBackgroundColor, cfg.codeBackgroundOpacity);
+                                }
+                                radius: 4
+                                border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15)
+                                border.width: 1
+                                clip: true
+
+                                Flickable {
+                                    id: termFlickable
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    contentWidth: Math.max(width, termText.paintedWidth + 8)
+                                    contentHeight: termText.paintedHeight + 8
+                                    clip: true
+                                    boundsBehavior: Flickable.StopAtBounds
+
+                                    TextEdit {
+                                        id: termText
+                                        width: Math.max(termFlickable.width, paintedWidth)
+                                        readOnly: true
+                                        selectByMouse: true
+                                        wrapMode: Text.NoWrap
+                                        text: terminalLoader.terminalOutput
+                                        textFormat: TextEdit.PlainText
+                                        font.family: {
+                                            var cfg = getConfigColors();
+                                            return cfg.codeFontFamily || 'Monospace';
+                                        }
+                                        font.pointSize: (Plasmoid.configuration.useCustomFont ? Plasmoid.configuration.customFontSize : Kirigami.Theme.defaultFont.pointSize) * 0.9
+                                        color: {
+                                            if (Plasmoid.configuration.useCustomFunctionTextColor) {
+                                                return Plasmoid.configuration.functionTextColor;
+                                            }
+                                            return Kirigami.Theme.textColor;
+                                        }
+                                        selectionColor: Plasmoid.configuration.useCustomSelectionColor ?
+                                                       Qt.rgba(Plasmoid.configuration.selectionColor.r,
+                                                             Plasmoid.configuration.selectionColor.g,
+                                                             Plasmoid.configuration.selectionColor.b,
+                                                             Plasmoid.configuration.selectionOpacity) :
+                                                       Kirigami.Theme.highlightColor
+
+                                        onTextChanged: {
+                                            if (root.isLoading && name === "Function") {
+                                                termFlickable.contentY = Math.max(0, termFlickable.contentHeight - termFlickable.height);
+                                            }
+                                        }
+                                    }
+
+                                    WheelHandler {
+                                        onWheel: (event) => {
+                                            if (event.angleDelta.y !== 0) {
+                                                termFlickable.contentY = Math.max(0, Math.min(termFlickable.contentHeight - termFlickable.height, termFlickable.contentY - event.angleDelta.y));
+                                            }
+                                            if (event.angleDelta.x !== 0) {
+                                                termFlickable.contentX = Math.max(0, Math.min(termFlickable.contentWidth - termFlickable.width, termFlickable.contentX - event.angleDelta.x));
+                                            }
+                                        }
+                                    }
+
+                                    PlasmaComponents.ScrollBar {
+                                        id: vbar
+                                        anchors.top: parent.top
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        active: termFlickable.moving || termFlickable.contentHeight > termFlickable.height
+                                    }
+
+                                    PlasmaComponents.ScrollBar {
+                                        id: hbar
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        orientation: Qt.Horizontal
+                                        active: termFlickable.moving || termFlickable.contentWidth > termFlickable.width
+                                    }
+                                }
+
+                                PlasmaComponents.Button {
+                                    anchors.top: parent.top
+                                    anchors.right: parent.right
+                                    anchors.margins: 4
+                                    width: 24
+                                    height: 24
+                                    visible: Plasmoid.configuration.showCopyButton && termBoxHover.hovered
+                                    icon.name: "edit-copy-symbolic"
+                                    text: i18n("Copy output")
+                                    display: PlasmaComponents.AbstractButton.IconOnly
+                                    z: 10
+
+                                    onClicked: {
+                                        termText.selectAll();
+                                        termText.copy();
+                                        termText.deselect();
+                                    }
+
+                                    PlasmaComponents.ToolTip.text: text
+                                    PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+                                    PlasmaComponents.ToolTip.visible: hovered
+                                }
+
+                                HoverHandler {
+                                    id: termBoxHover
+                                }
+                            }
                         }
                     }
                 }
