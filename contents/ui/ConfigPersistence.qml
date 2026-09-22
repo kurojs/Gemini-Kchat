@@ -8,6 +8,11 @@ KCM.SimpleKCM {
     property alias cfg_enablePersistence: enablePersistence.checked
     
     Kirigami.FormLayout {
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: i18nc("@title:group", "Conversation persistence")
+        }
+
         QQC2.CheckBox {
             id: enablePersistence
             Kirigami.FormData.label: i18nc("@option:check", "Enable conversation persistence:")
