@@ -296,7 +296,7 @@ PlasmoidItem {
                     if (funcMsgIndex !== undefined && funcMsgIndex >= 0 && funcMsgIndex < listModel.count) {
                         var item = listModel.get(funcMsgIndex);
                         if (item && item.name === "Function") {
-                            var escapedCmd = syntaxHighlighter.escapeHtml(fc.args.command || "");
+                            var escapedCmd = syntaxHighlighter.escapeHtml((fc.args && fc.args.command) || "");
                             var displayOut = formatTerminalOutput(out);
                             if (!displayOut.trim()) {
                                 displayOut = "(no output)";
