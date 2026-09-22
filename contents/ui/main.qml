@@ -66,9 +66,11 @@ PlasmoidItem {
 
     property int currentFuncMsgIndex: -1
 
+    // Strips ANSI escape codes and keeps the tail of command output capped at the limit.
     function formatTerminalOutput(rawOut, maxChars) {
         if (!rawOut) return "";
-        var limit = maxChars || 8000;
+        var DEFAULT_TERMINAL_LIMIT = 8000;
+        var limit = maxChars || DEFAULT_TERMINAL_LIMIT;
         var slice = rawOut;
         if (slice.length > limit * 2) {
             slice = slice.substring(slice.length - limit * 2);
