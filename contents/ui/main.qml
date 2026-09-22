@@ -1100,6 +1100,9 @@ PlasmoidItem {
                                         anchors.top: parent.top
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
+                                        orientation: Qt.Vertical
+                                        size: termFlickable.visibleArea.heightRatio
+                                        position: termFlickable.visibleArea.yPosition
                                         active: termFlickable.moving || termFlickable.contentHeight > termFlickable.height
                                     }
 
@@ -1109,6 +1112,8 @@ PlasmoidItem {
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
                                         orientation: Qt.Horizontal
+                                        size: termFlickable.visibleArea.widthRatio
+                                        position: termFlickable.visibleArea.xPosition
                                         active: termFlickable.moving || termFlickable.contentWidth > termFlickable.width
                                     }
                                 }
