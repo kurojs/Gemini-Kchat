@@ -48,10 +48,6 @@
       <label>Maximum terminal output height in pixels</label>
       <default>200</default>
     </entry>
-    <entry name="terminalUpdateInterval" type="Int">
-      <label>Terminal output live update interval in milliseconds</label>
-      <default>500</default>
-    </entry>
     <entry name="msgListDirectory" type="String">
       <label>List directory message</label>
       <default>⚙️ list_directory...</default>

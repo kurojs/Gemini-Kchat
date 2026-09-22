@@ -12,7 +12,6 @@ KCM.SimpleKCM {
     property alias cfg_showFunctionMessages: showFunctionMessages.checked
     property alias cfg_showTerminalOutput: showTerminalOutput.checked
     property alias cfg_terminalOutputMaxHeight: terminalOutputMaxHeight.value
-    property alias cfg_terminalUpdateInterval: terminalUpdateInterval.value
     property alias cfg_msgListDirectory: msgListDirectory.text
     property alias cfg_msgReadTextFile: msgReadTextFile.text
     property alias cfg_msgWriteTextFile: msgWriteTextFile.text
@@ -87,16 +86,6 @@ KCM.SimpleKCM {
             from: 60
             to: 1000
             stepSize: 20
-            editable: true
-            enabled: showFunctionMessages.checked && showTerminalOutput.checked
-        }
-
-        QQC2.SpinBox {
-            id: terminalUpdateInterval
-            Kirigami.FormData.label: i18nc("@label:spinbox", "Update frequency (ms):")
-            from: 200
-            to: 2000
-            stepSize: 50
             editable: true
             enabled: showFunctionMessages.checked && showTerminalOutput.checked
         }

@@ -66,15 +66,6 @@ PlasmoidItem {
 
     property int currentFuncMsgIndex: -1
 
-    Timer {
-        id: terminalThrottleTimer
-        interval: Plasmoid.configuration.terminalUpdateInterval > 0 ? Plasmoid.configuration.terminalUpdateInterval : 500
-        repeat: false
-        onTriggered: {
-            updateLiveTerminalUI();
-        }
-    }
-
     function formatTerminalOutput(rawOut, maxChars) {
         if (!rawOut) return "";
         var limit = maxChars || 8000;
@@ -89,21 +80,6 @@ PlasmoidItem {
             cleaned = "... [earlier output truncated]\n" + cleaned;
         }
         return cleaned;
-    }
-
-    function updateLiveTerminalUI() {
-        if (currentFuncMsgIndex < 0 || currentFuncMsgIndex >= listModel.count) return;
-        if (!pendingFuncCmd) return;
-        var item = listModel.get(currentFuncMsgIndex);
-        if (!item || item.name !== "Function") return;
-
-        var displayOut = formatTerminalOutput(pendingFuncCmd.latestOutput, 4000);
-        if (!displayOut.trim()) {
-            displayOut = "(running...)";
-        }
-        if (item.terminalOut !== displayOut) {
-            listModel.setProperty(currentFuncMsgIndex, "terminalOut", displayOut);
-        }
     }
 
     Plasma5Support.DataSource {
@@ -122,21 +98,7 @@ PlasmoidItem {
             var combinedOut = stdout + (stderr ? "\n" + stderr : "");
             var exitCode = data["exit code"];
 
-            pendingFuncCmd.latestOutput = combinedOut;
-
-            if (exitCode === undefined) {
-                if (Plasmoid.configuration.showFunctionMessages && Plasmoid.configuration.showTerminalOutput) {
-                    if (!terminalThrottleTimer.running) {
-                        var throttleMs = Plasmoid.configuration.terminalUpdateInterval > 0 ? Plasmoid.configuration.terminalUpdateInterval : 500;
-                        terminalThrottleTimer.interval = throttleMs;
-                        terminalThrottleTimer.start();
-                    }
-                }
-                return;
-            }
-
             disconnectSource(sourceName);
-            terminalThrottleTimer.stop();
 
             var cb = pendingFuncCmd.callback;
             pendingFuncCmd = null;
@@ -327,7 +289,7 @@ PlasmoidItem {
             currentFuncSource = cmd;
             currentFuncMsgIndex = funcMsgIndex;
             isLoading = true;
-            pendingFuncCmd = { command: cmd, latestOutput: "", callback: function(out, code) {
+            pendingFuncCmd = { command: cmd, callback: function(out, code) {
                 currentFuncSource = null;
                 currentFuncMsgIndex = -1;
                 if (Plasmoid.configuration.showFunctionMessages && Plasmoid.configuration.showTerminalOutput && fc.name === "run_command") {
@@ -367,7 +329,6 @@ PlasmoidItem {
     }
 
     function cancelCurrentCommand() {
-        terminalThrottleTimer.stop();
         pendingFuncCmd = null;
         currentFuncMsgIndex = -1;
         try {
