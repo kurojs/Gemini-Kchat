@@ -304,7 +304,7 @@ PlasmoidItem {
                             var statusBadge = (code === 0) 
                                 ? "" 
                                 : ' <span style="color:#ff5555; font-weight:bold;">[Exit ' + code + ']</span>';
-                            var headerMsg = '<b>⚙️ $</b> <code>' + escapedCmd + '</code>' + statusBadge;
+                            var headerMsg = Plasmoid.configuration.msgRunCommand + ' <code>' + escapedCmd + '</code>' + statusBadge;
                             listModel.set(funcMsgIndex, {
                                 name: "Function",
                                 number: headerMsg,
