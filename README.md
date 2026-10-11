@@ -49,7 +49,8 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google Gemini AI directly 
 **File Operations**
 - Gemini can list directories, read files, and write files on your system
 - Run shell commands and see the output
-- Fully configurable with enable/disable toggle and allowed root directory
+- Fully configurable with an enable/disable toggle in the widget settings
+- Operations run with your user permissions and are not confined to a sandboxed directory
 - Custom status messages for each operation type
 
 **Text-to-Speech**
