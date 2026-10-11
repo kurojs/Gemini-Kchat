@@ -319,10 +319,10 @@ PlasmoidItem {
                 }
                 try {
                     var result = code === 0 ? { output: out } : { error: out, exit_code: code };
-                    promptArray.push({ role: "USER", parts: [{ functionResponse: { name: fc.name, response: result } }] });
+                    promptArray.push({ role: "user", parts: [{ functionResponse: { name: fc.name, response: result } }] });
                     sendApiRequest(listModel);
                 } catch(e) {
-                    promptArray.push({ role: "USER", parts: [{ functionResponse: { name: fc.name, response: { error: "Callback error: " + e } } }] });
+                    promptArray.push({ role: "user", parts: [{ functionResponse: { name: fc.name, response: { error: "Callback error: " + e } } }] });
                     sendApiRequest(listModel);
                 }
             }};
@@ -371,12 +371,13 @@ PlasmoidItem {
     function sendApiRequest(listModel) {
         isLoading = true;
         var selectedModel = Plasmoid.configuration.selectedModel || "gemini-2.5-flash";
-        var url = "https://generativelanguage.googleapis.com/v1beta/models/" + selectedModel + ":generateContent?key=" + Plasmoid.configuration.apiKey;
+        var url = "https://generativelanguage.googleapis.com/v1beta/models/" + selectedModel + ":generateContent";
         var body = { contents: getSafeContents() };
         if (Plasmoid.configuration.enableFileOps) body.tools = getToolsDef();
         var xhr = new XMLHttpRequest();
         xhr.open("POST", url, true);
         xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.setRequestHeader("x-goog-api-key", Plasmoid.configuration.apiKey);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 200) {
@@ -387,6 +388,8 @@ PlasmoidItem {
                             listModel.append({ name: "Assistant", number: "<i>File operations are disabled. Enable them in widget settings first.</i>" });
                             isLoading = false;
                         } else {
+                            // Replay the raw part as returned by the API: it carries `thoughtSignature`,
+                            // which the API now requires on functionCall parts sent back (HTTP 400 otherwise).
                             promptArray.push({ role: "model", parts: [part] });
                             handleFunctionCall(part.functionCall, listModel);
                         }
