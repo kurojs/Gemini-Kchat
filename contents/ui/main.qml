@@ -38,6 +38,18 @@ PlasmoidItem {
     property var pendingFuncCmd: null
     property var currentFuncSource: null
 
+    // Models this widget no longer offers (see modelOptions in ConfigAppearance.qml), mapped to the
+    // successor that replaced them. The API still answers a retired id by redirecting it, so a
+    // configuration saved by an older version keeps working, but it would keep sending a model that
+    // is absent from the picker. Repair it once, before the user can send anything.
+    readonly property var retiredModels: ({ "gemini-3.5-flash": "gemini-3.6-flash" })
+
+    Component.onCompleted: {
+        var storedModel = Plasmoid.configuration.selectedModel;
+        if (storedModel && retiredModels[storedModel])
+            Plasmoid.configuration.selectedModel = retiredModels[storedModel];
+    }
+
     Plasma5Support.DataSource {
         id: executable
         engine: "executable"
@@ -368,6 +380,14 @@ PlasmoidItem {
         return c;
     }
 
+    function emptyResponseMessage(response, candidate) {
+        if (response && response.promptFeedback && response.promptFeedback.blockReason)
+            return "The request was blocked (" + response.promptFeedback.blockReason + "). Try rephrasing your message.";
+        if (candidate && candidate.finishReason && candidate.finishReason !== "STOP")
+            return "The model returned no content (" + candidate.finishReason + "). Try rephrasing your message.";
+        return "The model returned an empty response. Try sending your message again.";
+    }
+
     function sendApiRequest(listModel) {
         isLoading = true;
         var selectedModel = Plasmoid.configuration.selectedModel || "gemini-2.5-flash";
@@ -381,25 +401,43 @@ PlasmoidItem {
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 200) {
-                    var response = JSON.parse(xhr.responseText);
-                    var part = response.candidates[0].content.parts[0];
-                    if (part.functionCall) {
-                        if (!Plasmoid.configuration.enableFileOps) {
-                            listModel.append({ name: "Assistant", number: "<i>File operations are disabled. Enable them in widget settings first.</i>" });
+                    // A 200 response is not guaranteed to carry usable content: `candidates` can be
+                    // absent (blocked prompt), `content` can lack `parts`, and `parts[0]` can hold
+                    // neither `text` nor `functionCall` (observed with finishReason STOP). Reading
+                    // those blindly threw inside this handler and left `isLoading` stuck forever, so
+                    // every path below must end with it reset.
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        var candidate = (response.candidates && response.candidates.length > 0)
+                            ? response.candidates[0] : null;
+                        var part = (candidate && candidate.content && candidate.content.parts
+                            && candidate.content.parts.length > 0)
+                            ? candidate.content.parts[0] : null;
+
+                        if (part && part.functionCall) {
+                            if (!Plasmoid.configuration.enableFileOps) {
+                                listModel.append({ name: "Assistant", number: "<i>File operations are disabled. Enable them in widget settings first.</i>" });
+                                isLoading = false;
+                            } else {
+                                // Replay the raw part as returned by the API: it carries `thoughtSignature`,
+                                // which the API now requires on functionCall parts sent back (HTTP 400 otherwise).
+                                promptArray.push({ role: "model", parts: [part] });
+                                handleFunctionCall(part.functionCall, listModel);
+                            }
+                        } else if (part && part.text) {
+                            var formatted = syntaxHighlighter.formatText(part.text, getConfigColors());
+                            listModel.append({ name: "Assistant", number: formatted });
+                            promptArray.push({ role: "model", parts: [{ text: part.text }] });
                             isLoading = false;
+                            if (Plasmoid.configuration.enablePersistence)
+                                sessionManager.saveSession(selectedModel, promptArray);
                         } else {
-                            // Replay the raw part as returned by the API: it carries `thoughtSignature`,
-                            // which the API now requires on functionCall parts sent back (HTTP 400 otherwise).
-                            promptArray.push({ role: "model", parts: [part] });
-                            handleFunctionCall(part.functionCall, listModel);
+                            listModel.append({ name: "Assistant", number: "<i>" + emptyResponseMessage(response, candidate) + "</i>" });
+                            isLoading = false;
                         }
-                    } else if (part.text) {
-                        var formatted = syntaxHighlighter.formatText(part.text, getConfigColors());
-                        listModel.append({ name: "Assistant", number: formatted });
-                        promptArray.push({ role: "model", parts: [{ text: part.text }] });
+                    } catch (e) {
+                        listModel.append({ name: "Assistant", number: "<b>Error:</b> <i>Could not read the model response.</i>" });
                         isLoading = false;
-                        if (Plasmoid.configuration.enablePersistence)
-                            sessionManager.saveSession(selectedModel, promptArray);
                     }
                 } else {
                     var msg = "<b>Error " + xhr.status + ":</b> ";
