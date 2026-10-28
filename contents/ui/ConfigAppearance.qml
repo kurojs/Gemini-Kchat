@@ -9,15 +9,6 @@ KCM.SimpleKCM {
     property alias cfg_apiKey: apiKeyField.text
     property string cfg_selectedModel
 
-    property bool cfg_useCustomUserTextColor
-    property bool cfg_useCustomUserTextColorDefault
-    property color cfg_userMessageColor
-    property bool cfg_userMessageColorDefault
-    property real cfg_userMessageOpacity
-    property bool cfg_userMessageOpacityDefault
-    property color cfg_userTextColor
-    property bool cfg_userTextColorDefault
-    
     Kirigami.FormLayout {
 
         QQC2.TextField {
