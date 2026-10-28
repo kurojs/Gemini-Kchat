@@ -31,7 +31,7 @@ KCM.SimpleKCM {
             QQC2.TextArea {
                 id: customSystemPrompt
                 placeholderText: i18nc("@info:placeholder", "Example: You are a helpful, friendly assistant who explains things clearly and concisely. Always use a professional tone...")
-                wrapMode: TextArea.Wrap
+                wrapMode: QQC2.TextArea.Wrap
             }
         }
     }

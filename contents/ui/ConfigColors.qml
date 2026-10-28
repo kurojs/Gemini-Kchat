@@ -48,10 +48,11 @@ KCM.ScrollViewKCM {
     property alias cfg_linkColor: linkColor.color
 
     view: ListView {
+        id: colorsView
         model: ObjectModel {
             
             Item {
-                width: ListView.view.width
+                width: colorsView.width
                 height: formLayout.implicitHeight + 40
                 
                 Kirigami.FormLayout {

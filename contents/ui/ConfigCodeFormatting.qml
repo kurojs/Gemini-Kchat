@@ -21,10 +21,11 @@ KCM.ScrollViewKCM {
     property alias cfg_codeTypeColor: codeTypeColor.color
 
     view: ListView {
+        id: codeFormattingView
         model: ObjectModel {
             
             Item {
-                width: ListView.view.width
+                width: codeFormattingView.width
                 height: formLayout.implicitHeight + 40
                 
                 Kirigami.FormLayout {
