@@ -28,6 +28,7 @@ KCM.SimpleKCM {
                 "gemini-flash-latest",
                 "gemini-flash-lite-latest",
                 "gemini-pro-latest",
+                "gemini-4-argon",
                 "gemini-3.8-flash",
                 "gemini-3.7-flash",
                 "gemini-3.6-flash",
@@ -53,6 +54,7 @@ KCM.SimpleKCM {
                 i18nc("@item:inlistbox", "Flash (Latest)"),
                 i18nc("@item:inlistbox", "Flash-Lite (Latest)"),
                 i18nc("@item:inlistbox", "Pro (Latest)"),
+                i18nc("@item:inlistbox", "Gemini 4 Argon"),
                 i18nc("@item:inlistbox", "Gemini 3.8 Flash"),
                 i18nc("@item:inlistbox", "Gemini 3.7 Flash"),
                 i18nc("@item:inlistbox", "Gemini 3.6 Flash"),
@@ -93,11 +95,12 @@ KCM.SimpleKCM {
             type: Kirigami.MessageType.Information
             text: {
                 var descriptions = [
-                    i18nc("@info", "Always points to the latest stable Flash model."),
+                    i18nc("@info", "Always points to the newest Flash model. Availability and latency depend on Google's rollout."),
                     i18nc("@info", "Always points to the latest stable Flash-Lite model."),
                     i18nc("@info", "Always points to the latest stable Pro model."),
-                    i18nc("@info", "V3.8 generation. Latest stable. Fast and agentic."),
-                    i18nc("@info", "V3.7 generation. Fast, efficient, thinking-enabled."),
+                    i18nc("@info", "Gemini 4. Newest generation, thinking-enabled. Requires billing enabled; the free tier returns 429."),
+                    i18nc("@info", "V3.8 generation. Latest stable. Can be slow or unavailable while demand exceeds capacity."),
+                    i18nc("@info", "V3.7 generation. Thinking-enabled. Can be slow or unavailable under high demand."),
                     i18nc("@info", "V3.6 generation. Fast, efficient, thinking-enabled."),
                     i18nc("@info", "Omni 1.1. Multimodal audio input/output."),
                     i18nc("@info", "Omni preview. Multimodal audio input/output."),
