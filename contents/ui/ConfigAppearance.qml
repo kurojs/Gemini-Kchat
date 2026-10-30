@@ -98,7 +98,7 @@ KCM.SimpleKCM {
                     i18nc("@info", "Always points to the newest Flash model. Availability and latency depend on Google's rollout."),
                     i18nc("@info", "Always points to the latest stable Flash-Lite model."),
                     i18nc("@info", "Always points to the latest stable Pro model."),
-                    i18nc("@info", "Gemini 4. Newest generation, thinking-enabled. Requires billing enabled; the free tier returns 429."),
+                    i18nc("@info", "Gemini 4. Newest generation, thinking-enabled."),
                     i18nc("@info", "V3.8 generation. Latest stable. Can be slow or unavailable while demand exceeds capacity."),
                     i18nc("@info", "V3.7 generation. Thinking-enabled. Can be slow or unavailable under high demand."),
                     i18nc("@info", "V3.6 generation. Fast, efficient, thinking-enabled."),
