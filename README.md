@@ -1,4 +1,5 @@
-# Gemini-Kchat
+# Gemini-Kchat 
+[![KDE Store](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.pling.com%2Focs%2Fv1%2Fcontent%2Fdata%3Fsearch%3DGemini-Kchat%26pagesize%3D1%26format%3Djson&query=%24.data%5B0%5D.downloads&label=KDE%20Store&suffix=%20downloads&color=blue)](https://www.pling.com/p/2327619/)
 
 Gemini-Kchat is a KDE Plasma plasmoid that integrates Google Gemini AI directly into your desktop. Chat with Gemini using the Google AI Studio API without leaving your workspace.
 
