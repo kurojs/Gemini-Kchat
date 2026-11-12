@@ -6,7 +6,6 @@ import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasmoid
 import org.kde.plasma.extras as PlasmaExtras
-import QtMultimedia
 import org.kde.plasma.plasma5support as Plasma5Support
 
 PlasmoidItem {
@@ -16,24 +15,11 @@ PlasmoidItem {
     property var promptArray: [];
     property bool isLoading: false
     property bool isAtBottom: true
-    property var audioCache: ({})
+    property var chatModel: null
     property string currentPlayingHash: ""
-    
+
     hideOnWindowDeactivate: !Plasmoid.configuration.pin
-    
-    MediaPlayer {
-        id: ttsPlayer
-        audioOutput: AudioOutput {}
-        onPlaybackStateChanged: {
-            if (playbackState === MediaPlayer.StoppedState) {
-                currentPlayingHash = "";
-            }
-        }
-        onErrorOccurred: function(error, errorString) {
-            currentPlayingHash = "";
-        }
-    }
-    
+
     property var pendingTTSJobs: ({})
     property var pendingFuncCmd: null
     property var currentFuncSource: null
@@ -56,19 +42,16 @@ PlasmoidItem {
         connectedSources: []
         onNewData: function(sourceName, data) {
             var exitCode = data["exit code"];
-            for (var hash in pendingTTSJobs) {
-                if (pendingTTSJobs[hash].command === sourceName) {
-                    var jobInfo = pendingTTSJobs[hash];
-                    if (exitCode === 0 && jobInfo.outputPath) {
-                        Qt.callLater(function() {
-                            audioCache[hash] = `file://${jobInfo.outputPath}`;
-                            ttsPlayer.source = audioCache[hash];
-                            ttsPlayer.play();
-                        });
-                    } else {
+            for (var key in pendingTTSJobs) {
+                if (pendingTTSJobs[key].command === sourceName) {
+                    var job = pendingTTSJobs[key];
+                    delete pendingTTSJobs[key];
+                    if (job.kind === "play" && job.key === currentPlayingHash) {
+                        currentPlayingHash = "";
+                        if (exitCode !== 0) reportTTSError(exitCode, job.provider);
+                    } else if (job.kind === "dsnote" && job.key === currentPlayingHash) {
                         currentPlayingHash = "";
                     }
-                    delete pendingTTSJobs[hash];
                     break;
                 }
             }
@@ -165,13 +148,18 @@ PlasmoidItem {
     }
 
     function stripHtml(html) {
-        var text = html.replace(/<[^>]*>/g, '');
+        var text = String(html).replace(/<[^>]*>/g, '');
         text = text.replace(/&nbsp;/g, ' ');
         text = text.replace(/&lt;/g, '<');
         text = text.replace(/&gt;/g, '>');
+        text = text.replace(/&quot;/g, '"');
+        text = text.replace(/&#39;/g, "'");
         text = text.replace(/&amp;/g, '&');
-        text = text.replace(/'/g, "\\'");
         return text;
+    }
+
+    function shellQuote(value) {
+        return "'" + String(value).replace(/'/g, "'\\''") + "'";
     }
 
     function hashString(str) {
@@ -463,87 +451,160 @@ PlasmoidItem {
         xhr.send(JSON.stringify(body));
     }
 
-    function getTTSCommand(cleanText, messageHash) {
+    function ttsKey(text) {
         var provider = Plasmoid.configuration.ttsProvider || "elevenlabs";
-        var escapedText = escapeJsonString(cleanText);
-        var outputPath;
+        return hashString(provider + "|" + text);
+    }
+
+    function ttsTargetPath(key, provider) {
+        var ext = (provider === "elevenlabs" || provider === "openai") ? "mp3" : "wav";
+        return "/tmp/tts_" + key + "." + ext;
+    }
+
+    function getTTSGenerator(cleanText, key) {
+        var provider = Plasmoid.configuration.ttsProvider || "elevenlabs";
+        var outputPath = ttsTargetPath(key, provider);
         var cmd;
 
         if (provider === "elevenlabs") {
-            var apiKey = Plasmoid.configuration.elevenlabsApiKey;
-            var voiceId = Plasmoid.configuration.elevenlabsVoiceId || "pNInz6obpgDQGcFmaJgB";
+            var apiKey = (Plasmoid.configuration.elevenlabsApiKey || "").trim();
+            var voiceId = (Plasmoid.configuration.elevenlabsVoiceId || "").trim() || "pNInz6obpgDQGcFmaJgB";
             if (!apiKey) return null;
-            outputPath = `/tmp/tts_${messageHash}.mp3`;
-            cmd = `rm -f ${outputPath}; curl -s -X POST 'https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?optimize_streaming_latency=3' -H 'xi-api-key: ${apiKey}' -H 'Content-Type: application/json' -d '{"text":"${escapedText}","model_id":"eleven_multilingual_v2"}' -o ${outputPath}`;
+            var body = '{"text":"' + escapeJsonString(cleanText) + '","model_id":"eleven_multilingual_v2"}';
+            cmd = "curl -fsS --max-time 120 -X POST "
+                + shellQuote("https://api.elevenlabs.io/v1/text-to-speech/" + voiceId + "/stream?optimize_streaming_latency=3")
+                + " -H " + shellQuote("xi-api-key: " + apiKey)
+                + " -H 'Content-Type: application/json'"
+                + " -d " + shellQuote(body)
+                + " -o " + shellQuote(outputPath);
         } else if (provider === "openai") {
-            var apiKey = Plasmoid.configuration.openaiApiKey;
-            var voice = Plasmoid.configuration.openaiVoice || "alloy";
-            var model = Plasmoid.configuration.openaiModel || "tts-1";
-            if (!apiKey) return null;
-            outputPath = `/tmp/tts_${messageHash}.mp3`;
-            cmd = `rm -f ${outputPath}; curl -s -X POST 'https://api.openai.com/v1/audio/speech' -H 'Authorization: Bearer ${apiKey}' -H 'Content-Type: application/json' -d '{"model":"${model}","input":"${escapedText}","voice":"${voice}"}' -o ${outputPath}`;
+            var openaiKey = (Plasmoid.configuration.openaiApiKey || "").trim();
+            var voice = (Plasmoid.configuration.openaiVoice || "alloy").trim();
+            var model = (Plasmoid.configuration.openaiModel || "tts-1").trim();
+            if (!openaiKey) return null;
+            var openaiBody = '{"model":"' + escapeJsonString(model) + '","input":"'
+                + escapeJsonString(cleanText) + '","voice":"' + escapeJsonString(voice) + '"}';
+            cmd = "curl -fsS --max-time 120 -X POST 'https://api.openai.com/v1/audio/speech'"
+                + " -H " + shellQuote("Authorization: Bearer " + openaiKey)
+                + " -H 'Content-Type: application/json'"
+                + " -d " + shellQuote(openaiBody)
+                + " -o " + shellQuote(outputPath);
         } else if (provider === "espeak") {
-            var voice = Plasmoid.configuration.espeakVoice || "en";
+            var espeakVoice = (Plasmoid.configuration.espeakVoice || "en").trim() || "en";
             var speed = Plasmoid.configuration.espeakSpeed || 175;
             var pitch = Plasmoid.configuration.espeakPitch || 50;
-            outputPath = `/tmp/tts_${messageHash}.wav`;
-            var shellText = cleanText.replace(/'/g, "'\\''");
-            cmd = `rm -f ${outputPath}; espeak-ng -v ${voice} -s ${speed} -p ${pitch} -w ${outputPath} '${shellText}'`;
+            cmd = "espeak-ng -v " + shellQuote(espeakVoice)
+                + " -s " + speed + " -p " + pitch
+                + " -w " + shellQuote(outputPath)
+                + " " + shellQuote(cleanText);
         } else if (provider === "piper") {
-            var modelPath = Plasmoid.configuration.piperModelPath;
+            var modelPath = (Plasmoid.configuration.piperModelPath || "").trim();
             if (!modelPath) return null;
-            outputPath = `/tmp/tts_${messageHash}.wav`;
-            var shellText = cleanText.replace(/'/g, "'\\''");
-            cmd = `rm -f ${outputPath}; echo '${shellText}' | piper --model '${modelPath}' --output_file ${outputPath}`;
+            cmd = "printf '%s' " + shellQuote(cleanText)
+                + " | piper --model " + shellQuote(modelPath)
+                + " --output_file " + shellQuote(outputPath);
         } else {
             return null;
         }
 
-        return { command: cmd, outputPath: outputPath };
+        return { command: cmd, path: outputPath };
     }
 
-    function playTTS(text, messageHash) {
+    readonly property var ttsPlayers: [
+        { bin: "pw-play", args: "" },
+        { bin: "paplay", args: "" },
+        { bin: "ffplay", args: "-nodisp -autoexit -loglevel error" },
+        { bin: "mpv", args: "--no-video --really-quiet" }
+    ]
+
+    function ttsPlayerChain(target) {
+        var chain = [];
+        for (var i = 0; i < ttsPlayers.length; i++) {
+            var player = ttsPlayers[i];
+            var args = player.args ? player.args + " " : "";
+            chain.push("if command -v " + player.bin + " >/dev/null 2>&1; then exec "
+                + player.bin + " " + args + target + "; fi");
+        }
+        chain.push("exit 5");
+        return chain.join("; ");
+    }
+
+    function reportTTSError(exitCode, provider) {
+        var detail;
+        if (exitCode === -1) {
+            detail = i18n("speech is not configured for the selected provider. Check the widget settings.");
+        } else if (exitCode === 2) {
+            detail = i18n("the speech request was rejected. Check the API key, the voice and your quota in the widget settings.");
+        } else if (exitCode === 5) {
+            detail = i18n("no audio player was found. Install pipewire (pw-play) or pulseaudio-utils (paplay).");
+        } else if (exitCode === 127) {
+            detail = i18n("a command needed to generate the audio is not installed.");
+        } else {
+            detail = i18n("audio playback failed (exit code %1).", exitCode);
+        }
+        console.warn("Gemini-Kchat TTS:", provider || "", "exit", exitCode, detail);
+        if (root.chatModel)
+            root.chatModel.append({ name: "Assistant", number: "<b>TTS error:</b> <i>" + detail + "</i>" });
+    }
+
+    function stopTTS() {
+        if (!currentPlayingHash) return;
+        var key = currentPlayingHash;
+        currentPlayingHash = "";
+        delete pendingTTSJobs[key];
+
+        if ((Plasmoid.configuration.ttsProvider || "elevenlabs") === "dsnote") {
+            var dsnoteCmd = (Plasmoid.configuration.dsnoteCommand || "").trim();
+            if (dsnoteCmd) executable.connectSource(dsnoteCmd + " --action cancel");
+            return;
+        }
+
+        // The dotted file name is matched with a bracketed dot so the pkill command line
+        // itself does not match, and only this message's player and shell are stopped.
+        executable.connectSource("pkill -f 'tts_" + key + "[.]mp3'; pkill -f 'tts_" + key + "[.]wav'; true");
+    }
+
+    function playTTS(text) {
         if (!Plasmoid.configuration.enableTTS) return;
 
+        var key = ttsKey(text);
+        if (currentPlayingHash === key) {
+            stopTTS();
+            return;
+        }
+        stopTTS();
+
+        var cleanText = stripHtml(text).trim();
+        if (!cleanText) return;
+
         var provider = Plasmoid.configuration.ttsProvider || "elevenlabs";
+        currentPlayingHash = key;
 
         if (provider === "dsnote") {
-            var dsnoteCmd = Plasmoid.configuration.dsnoteCommand;
-            if (!dsnoteCmd || dsnoteCmd.trim() === "") return;
-            if (currentPlayingHash === messageHash) {
-                executable.connectSource(dsnoteCmd + ' --action cancel');
+            var dsnoteCmd = (Plasmoid.configuration.dsnoteCommand || "").trim();
+            if (!dsnoteCmd) {
                 currentPlayingHash = "";
+                reportTTSError(-1, provider);
                 return;
             }
-            currentPlayingHash = messageHash;
-            var cleanText = stripHtml(text);
-            var shellText = cleanText.replace(/'/g, "'\\''");
-            var cmd = dsnoteCmd + " --action start-reading-text --text '" + shellText + "'";
-            pendingTTSJobs[messageHash] = { command: cmd };
-            executable.connectSource(cmd);
+            var dsnoteRun = dsnoteCmd + " --action start-reading-text --text " + shellQuote(cleanText);
+            pendingTTSJobs[key] = { kind: "dsnote", command: dsnoteRun, key: key, provider: provider };
+            executable.connectSource(dsnoteRun);
             return;
         }
 
-        if (currentPlayingHash === messageHash) {
-            ttsPlayer.stop();
+        var generator = getTTSGenerator(cleanText, key);
+        if (!generator) {
             currentPlayingHash = "";
+            reportTTSError(-1, provider);
             return;
         }
-        ttsPlayer.stop();
-        currentPlayingHash = messageHash;
-        var cleanText = stripHtml(text);
-        if (audioCache[messageHash]) {
-            ttsPlayer.source = audioCache[messageHash];
-            ttsPlayer.play();
-            return;
-        }
-        var ttsCmd = getTTSCommand(cleanText, messageHash);
-        if (!ttsCmd) {
-            currentPlayingHash = "";
-            return;
-        }
-        pendingTTSJobs[messageHash] = ttsCmd;
-        executable.connectSource(ttsCmd.command);
+
+        var command = "f=" + shellQuote(generator.path)
+            + '; if [ ! -s "$f" ]; then ' + generator.command + " || exit 2; fi"
+            + "; " + ttsPlayerChain('"$f"');
+        pendingTTSJobs[key] = { kind: "play", command: command, key: key, provider: provider };
+        executable.connectSource(command);
     }
 
     function request(messageField, listModel, prompt) {
@@ -920,6 +981,7 @@ PlasmoidItem {
 
                     Component.onCompleted: {
                         listModelController = listModel;
+                        root.chatModel = listModel;
                     }
                 }
 
@@ -1029,12 +1091,12 @@ PlasmoidItem {
                                 anchors.bottom: parent.bottom
                                 visible: name === "Assistant" && Plasmoid.configuration.enableTTS && hoverHandler.hovered
 
-                                icon.name: currentPlayingHash === hashString(number) ? "media-playback-stop" : "audio-volume-high"
-                                text: currentPlayingHash === hashString(number) ? i18n("Stop") : i18n("Play")
+                                icon.name: currentPlayingHash === ttsKey(number) ? "media-playback-stop" : "audio-volume-high"
+                                text: currentPlayingHash === ttsKey(number) ? i18n("Stop") : i18n("Play")
                                 display: PlasmaComponents.AbstractButton.IconOnly
                                 
                                 onClicked: {
-                                    playTTS(number, hashString(number));
+                                    playTTS(number);
                                 }
 
                                 PlasmaComponents.ToolTip.text: text
