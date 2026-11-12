@@ -28,7 +28,16 @@ PlasmoidItem {
     // successor that replaced them. The API still answers a retired id by redirecting it, so a
     // configuration saved by an older version keeps working, but it would keep sending a model that
     // is absent from the picker. Repair it once, before the user can send anything.
-    readonly property var retiredModels: ({ "gemini-3.5-flash": "gemini-3.6-flash" })
+    readonly property var retiredModels: ({
+        "gemini-3.5-flash": "gemini-3.6-flash",
+        "gemini-3.7-flash": "gemini-3.8-flash",
+        "gemini-2.5-flash": "gemini-3.5-flash-lite",
+        "gemini-2.5-pro": "gemini-3.8-flash",
+        "gemini-3.1-flash-lite-preview": "gemini-3.1-flash-lite",
+        "gemini-omni-1.1-flash": "gemini-omni-1.2-flash",
+        "gemini-omni-flash-preview": "gemini-omni-1.2-flash",
+        "deep-research-pro-preview-12-2025": "deep-research-preview-04-2026"
+    })
 
     Component.onCompleted: {
         var storedModel = Plasmoid.configuration.selectedModel;

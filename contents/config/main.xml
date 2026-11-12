@@ -12,7 +12,7 @@
     </entry>
     <entry name="selectedModel" type="String">
       <label>Gemini Model</label>
-      <default>gemini-2.5-flash</default>
+      <default>gemini-flash-latest</default>
     </entry>
     <entry name="pin" type="Bool">
       <label>Keep widget open</label>

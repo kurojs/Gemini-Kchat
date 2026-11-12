@@ -22,22 +22,17 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google Gemini AI directly 
 - Flash-Lite (Latest)
 - Pro (Latest)
 - Gemini 4 Argon
+- Gemini 4 Carbon
 - Gemini 3.8 Flash
-- Gemini 3.7 Flash
 - Gemini 3.6 Flash
-- Gemini Omni 1.1 Flash
-- Gemini Omni Flash Preview
+- Gemini Omni 1.2 Flash
 - Gemini 3.5 Flash-Lite
 - Gemini 3.1 Pro Preview
 - Gemini 3.1 Flash-Lite
-- Gemini 3.1 Flash-Lite Preview
 - Gemini 3.1 Pro Custom Tools
 - Gemini 3 Flash Preview
-- Gemini 2.5 Flash
-- Gemini 2.5 Pro
 - Gemini 2.5 Flash-Lite
 - Gemma 4 (31B, 26B A4B)
-- Deep Research Pro Preview
 - Deep Research Preview (Apr 2026)
 - Deep Research Max Preview (Apr 2026)
 
@@ -62,7 +57,7 @@ Gemini-Kchat is a KDE Plasma plasmoid that integrates Google Gemini AI directly 
   - espeak-ng (local, fast)
   - Piper (local, neural voices)
   - Speech Note (local, multiple engines via dsnote)
-- Audio caching to avoid re-generating
+- Per-provider audio caching to avoid re-generating speech
 
 **Customization**
 - Markdown rendering with syntax highlighting for code blocks
@@ -229,6 +224,7 @@ Click on the Gemini-Kchat icon in your panel and start chatting with Gemini. Sim
 - KDE Plasma 6.0 or later
 - Google AI Studio API key
 - For local TTS: espeak-ng or piper (optional)
+- To play generated speech: a command-line player, such as `pw-play` (PipeWire), `paplay` (PulseAudio), `ffplay` (ffmpeg) or `mpv`
 
 ---
 
@@ -236,7 +232,7 @@ Click on the Gemini-Kchat icon in your panel and start chatting with Gemini. Sim
 
 > **⚠️ Rate Limit Errors**
 > 
-> If you encounter rate limit errors, make sure you have a valid API key. Generally, API keys work well with the free tier on models like Gemini 2.5 Flash or Gemma 3 27B Instruct. Other models may require billing to be enabled on your Google Cloud project.
+> If you encounter rate limit errors, make sure you have a valid API key. Generally, API keys work well with the free tier on models like Gemini 3.6 Flash or Gemma 4. Most of the other models require billing to be enabled on your Google Cloud project.
 
 ---
 
